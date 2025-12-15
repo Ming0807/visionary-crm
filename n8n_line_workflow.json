@@ -1,0 +1,224 @@
+{
+  "name": "LINE Webhook Handler",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "line",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-node",
+      "name": "LINE Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [220, 300],
+      "webhookId": "line-webhook"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {} }}",
+        "options": {}
+      },
+      "id": "respond-node",
+      "name": "Respond Immediately",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [420, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract LINE event data\nconst body = $input.first().json.body || $input.first().json;\nconst events = body.events || [];\n\nif (events.length === 0) {\n  return [];\n}\n\nconst results = events.map(event => {\n  const userId = event.source?.userId;\n  const messageType = event.message?.type || event.type;\n  const text = event.message?.text || '';\n  const replyToken = event.replyToken;\n  const messageId = event.message?.id;\n\n  return {\n    json: {\n      userId,\n      messageType,\n      text,\n      replyToken,\n      messageId,\n      eventType: event.type,\n      timestamp: event.timestamp\n    }\n  };\n});\n\nreturn results;"
+      },
+      "id": "extract-node",
+      "name": "Extract Event",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [620, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ $json.eventType }}",
+              "rightValue": "message",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-node",
+      "name": "Is Message?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [820, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.line.me/v2/bot/profile/{{ $json.userId }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "profile-node",
+      "name": "Get LINE Profile",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1020, 200],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "line-auth",
+          "name": "LINE API Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $credentials.supabaseUrl }}/rest/v1/rpc/upsert_line_customer",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"p_line_user_id\": \"{{ $('Extract Event').item.json.userId }}\",\n  \"p_display_name\": \"{{ $json.displayName }}\",\n  \"p_picture_url\": \"{{ $json.pictureUrl }}\",\n  \"p_status_message\": \"{{ $json.statusMessage }}\"\n}",
+        "options": {}
+      },
+      "id": "upsert-node",
+      "name": "Upsert Customer",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1220, 200],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "supabase-auth",
+          "name": "Supabase Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $credentials.supabaseUrl }}/rest/v1/chat_logs",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"platform\": \"line\",\n  \"direction\": \"inbound\",\n  \"message_type\": \"{{ $('Extract Event').item.json.messageType }}\",\n  \"content\": \"{{ $('Extract Event').item.json.text }}\",\n  \"platform_message_id\": \"{{ $('Extract Event').item.json.messageId }}\",\n  \"reply_token\": \"{{ $('Extract Event').item.json.replyToken }}\"\n}",
+        "options": {
+          "redirect": {
+            "redirect": {}
+          }
+        }
+      },
+      "id": "chatlog-node",
+      "name": "Save Chat Log",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1420, 200],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "supabase-auth",
+          "name": "Supabase Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/reply",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"replyToken\": \"{{ $('Extract Event').item.json.replyToken }}\",\n  \"messages\": [\n    {\n      \"type\": \"text\",\n      \"text\": \"ได้รับข้อความแล้วครับ 🙏 ทีมงานจะติดต่อกลับโดยเร็ว\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "reply-node",
+      "name": "Reply to LINE",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1620, 200],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "line-auth",
+          "name": "LINE API Auth"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "LINE Webhook": {
+      "main": [
+        [
+          { "node": "Respond Immediately", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Respond Immediately": {
+      "main": [
+        [
+          { "node": "Extract Event", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Extract Event": {
+      "main": [
+        [
+          { "node": "Is Message?", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Is Message?": {
+      "main": [
+        [
+          { "node": "Get LINE Profile", "type": "main", "index": 0 }
+        ],
+        []
+      ]
+    },
+    "Get LINE Profile": {
+      "main": [
+        [
+          { "node": "Upsert Customer", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Upsert Customer": {
+      "main": [
+        [
+          { "node": "Save Chat Log", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Save Chat Log": {
+      "main": [
+        [
+          { "node": "Reply to LINE", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "tags": []
+}
