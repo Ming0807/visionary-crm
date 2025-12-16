@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Users, Search, Filter } from "lucide-react";
+import { Users, Search, Filter, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase";
@@ -61,6 +61,12 @@ export default async function AdminCustomersPage() {
             Manage your customer relationships ({customers.length} total)
           </p>
         </div>
+        <a href="/api/export?type=customers" download>
+          <Button variant="outline">
+            <Download className="h-4 w-4 mr-2" />
+            Export CSV
+          </Button>
+        </a>
       </div>
 
       {/* Search & Filter */}

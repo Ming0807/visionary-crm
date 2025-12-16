@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ShoppingCart, Search, Filter } from "lucide-react";
+import { ShoppingCart, Search, Filter, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase";
@@ -91,6 +91,12 @@ export default async function AdminOrdersPage() {
             Manage customer orders ({orders.length} total)
           </p>
         </div>
+        <a href="/api/export?type=orders" download>
+          <Button variant="outline">
+            <Download className="h-4 w-4 mr-2" />
+            Export CSV
+          </Button>
+        </a>
       </div>
 
       {/* Stats */}

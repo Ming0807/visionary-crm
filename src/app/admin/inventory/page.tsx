@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Package, AlertTriangle, XCircle, ArrowUpDown, RefreshCw, Plus, Minus } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Package, AlertTriangle, XCircle, RefreshCw, Plus, Minus, Save, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +14,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
+import { useToast } from "@/hooks/use-toast";
 
 interface InventoryItem {
     id: string;
@@ -37,12 +38,14 @@ interface InventoryStats {
 }
 
 export default function AdminInventoryPage() {
+    const { toast } = useToast();
     const [items, setItems] = useState<InventoryItem[]>([]);
     const [stats, setStats] = useState<InventoryStats | null>(null);
     const [loading, setLoading] = useState(true);
-    const [showAll, setShowAll] = useState(false);
-    const [editingId, setEditingId] = useState<string | null>(null);
-    const [editValue, setEditValue] = useState("");
+    const [showAll, setShowAll] = useState(true);
+    const [search, setSearch] = useState("");
+    const [editedStocks, setEditedStocks] = useState<Record<string, number>>({});
+    const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
 
     useEffect(() => {
         fetchInventory();
@@ -55,6 +58,12 @@ export default function AdminInventoryPage() {
             const data = await res.json();
             setItems(data.items || []);
             setStats(data.stats);
+            // Initialize edited stocks
+            const stocks: Record<string, number> = {};
+            (data.items || []).forEach((item: InventoryItem) => {
+                stocks[item.id] = item.stock_quantity;
+            });
+            setEditedStocks(stocks);
         } catch (error) {
             console.error("Failed to fetch inventory:", error);
         } finally {
@@ -62,18 +71,54 @@ export default function AdminInventoryPage() {
         }
     };
 
-    const updateStock = async (variantId: string, quantity: number, type: "set" | "add" = "set") => {
+    const handleStockChange = (id: string, value: number) => {
+        setEditedStocks((prev) => ({ ...prev, [id]: Math.max(0, value) }));
+    };
+
+    const handleQuickAdjust = (id: string, delta: number) => {
+        const current = editedStocks[id] || 0;
+        handleStockChange(id, current + delta);
+    };
+
+    const saveStock = async (variantId: string) => {
+        const quantity = editedStocks[variantId];
+        if (quantity === undefined) return;
+
+        setSavingIds((prev) => new Set(prev).add(variantId));
+
         try {
-            await fetch("/api/inventory", {
+            const res = await fetch("/api/inventory", {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ variantId, quantity, type }),
+                body: JSON.stringify({ variantId, quantity, type: "set" }),
             });
-            fetchInventory();
-            setEditingId(null);
+
+            if (res.ok) {
+                // Update local state optimistically
+                setItems((prev) =>
+                    prev.map((item) =>
+                        item.id === variantId ? { ...item, stock_quantity: quantity } : item
+                    )
+                );
+                toast({ title: "บันทึกแล้ว!" });
+            } else {
+                toast({ title: "เกิดข้อผิดพลาด", variant: "destructive" });
+            }
         } catch (error) {
             console.error("Failed to update stock:", error);
+            toast({ title: "เกิดข้อผิดพลาด", variant: "destructive" });
+        } finally {
+            setSavingIds((prev) => {
+                const next = new Set(prev);
+                next.delete(variantId);
+                return next;
+            });
         }
+    };
+
+    const hasChanged = (id: string) => {
+        const item = items.find((i) => i.id === id);
+        return item && editedStocks[id] !== item.stock_quantity;
     };
 
     const getStockBadge = (quantity: number) => {
@@ -81,7 +126,7 @@ export default function AdminInventoryPage() {
             return (
                 <Badge variant="destructive" className="gap-1">
                     <XCircle className="h-3 w-3" />
-                    Out of Stock
+                    หมด
                 </Badge>
             );
         }
@@ -89,20 +134,31 @@ export default function AdminInventoryPage() {
             return (
                 <Badge className="bg-yellow-100 text-yellow-700 gap-1">
                     <AlertTriangle className="h-3 w-3" />
-                    Low Stock
+                    ใกล้หมด
                 </Badge>
             );
         }
-        return <Badge className="bg-green-100 text-green-700">In Stock</Badge>;
+        return <Badge className="bg-green-100 text-green-700">มีสต๊อก</Badge>;
     };
+
+    // Filter items by search
+    const filteredItems = items.filter((item) => {
+        if (!search) return true;
+        const q = search.toLowerCase();
+        return (
+            item.products?.name?.toLowerCase().includes(q) ||
+            item.sku?.toLowerCase().includes(q) ||
+            item.color_name?.toLowerCase().includes(q)
+        );
+    });
 
     if (loading) {
         return (
             <div className="p-6 lg:p-8">
                 <div className="animate-pulse space-y-4">
                     <div className="h-8 bg-muted rounded w-48"></div>
-                    <div className="grid grid-cols-3 gap-4">
-                        {[1, 2, 3].map((i) => (
+                    <div className="grid grid-cols-4 gap-4">
+                        {[1, 2, 3, 4].map((i) => (
                             <div key={i} className="h-24 bg-muted rounded-xl"></div>
                         ))}
                     </div>
@@ -114,21 +170,30 @@ export default function AdminInventoryPage() {
     return (
         <div className="p-6 lg:p-8">
             {/* Header */}
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
                 <div>
-                    <h1 className="text-2xl font-bold text-foreground">Inventory</h1>
-                    <p className="text-muted-foreground">Stock levels and alerts</p>
+                    <h1 className="text-2xl font-bold text-foreground">คลังสินค้า</h1>
+                    <p className="text-muted-foreground">จัดการสต๊อกสินค้า</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="ค้นหา..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="pl-9 w-48"
+                        />
+                    </div>
                     <Button variant="outline" onClick={fetchInventory}>
                         <RefreshCw className="h-4 w-4 mr-2" />
-                        Refresh
+                        รีเฟรช
                     </Button>
                     <Button
                         variant={showAll ? "default" : "outline"}
                         onClick={() => setShowAll(!showAll)}
                     >
-                        {showAll ? "Show Low Stock Only" : "Show All"}
+                        {showAll ? "เฉพาะใกล้หมด" : "ทั้งหมด"}
                     </Button>
                 </div>
             </div>
@@ -143,7 +208,7 @@ export default function AdminInventoryPage() {
                             </div>
                             <div>
                                 <p className="text-2xl font-bold">{stats.totalStock}</p>
-                                <p className="text-sm text-muted-foreground">Total Stock</p>
+                                <p className="text-sm text-muted-foreground">สต๊อกรวม</p>
                             </div>
                         </div>
                     </Card>
@@ -154,7 +219,7 @@ export default function AdminInventoryPage() {
                             </div>
                             <div>
                                 <p className="text-2xl font-bold">{stats.totalVariants}</p>
-                                <p className="text-sm text-muted-foreground">Variants</p>
+                                <p className="text-sm text-muted-foreground">รายการ</p>
                             </div>
                         </div>
                     </Card>
@@ -165,7 +230,7 @@ export default function AdminInventoryPage() {
                             </div>
                             <div>
                                 <p className="text-2xl font-bold">{stats.lowStockCount}</p>
-                                <p className="text-sm text-muted-foreground">Low Stock</p>
+                                <p className="text-sm text-muted-foreground">ใกล้หมด</p>
                             </div>
                         </div>
                     </Card>
@@ -176,7 +241,7 @@ export default function AdminInventoryPage() {
                             </div>
                             <div>
                                 <p className="text-2xl font-bold">{stats.outOfStockCount}</p>
-                                <p className="text-sm text-muted-foreground">Out of Stock</p>
+                                <p className="text-sm text-muted-foreground">หมดสต๊อก</p>
                             </div>
                         </div>
                     </Card>
@@ -185,102 +250,92 @@ export default function AdminInventoryPage() {
 
             {/* Inventory Table */}
             <Card>
-                {items.length > 0 ? (
+                {filteredItems.length > 0 ? (
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Product</TableHead>
-                                <TableHead>Variant</TableHead>
+                                <TableHead>สินค้า</TableHead>
+                                <TableHead>ตัวเลือก</TableHead>
                                 <TableHead>SKU</TableHead>
-                                <TableHead>Stock</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead>Actions</TableHead>
+                                <TableHead className="w-[200px]">จำนวน</TableHead>
+                                <TableHead>สถานะ</TableHead>
+                                <TableHead></TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {items.map((item) => (
-                                <TableRow key={item.id}>
-                                    <TableCell>
-                                        <div>
-                                            <p className="font-medium">{item.products?.name}</p>
-                                            <p className="text-sm text-muted-foreground">{item.products?.brand}</p>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>{item.color_name || "Default"}</TableCell>
-                                    <TableCell className="font-mono text-sm">
-                                        {item.sku || "-"}
-                                    </TableCell>
-                                    <TableCell>
-                                        {editingId === item.id ? (
-                                            <div className="flex items-center gap-2">
+                            {filteredItems.map((item) => {
+                                const currentStock = editedStocks[item.id] ?? item.stock_quantity;
+                                const changed = hasChanged(item.id);
+                                const saving = savingIds.has(item.id);
+
+                                return (
+                                    <TableRow key={item.id}>
+                                        <TableCell>
+                                            <div>
+                                                <p className="font-medium">{item.products?.name}</p>
+                                                <p className="text-sm text-muted-foreground">{item.products?.brand}</p>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>{item.color_name || "Default"}</TableCell>
+                                        <TableCell className="font-mono text-sm">
+                                            {item.sku || "-"}
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="flex items-center gap-1">
+                                                <Button
+                                                    size="icon"
+                                                    variant="outline"
+                                                    className="h-8 w-8"
+                                                    onClick={() => handleQuickAdjust(item.id, -1)}
+                                                    disabled={saving}
+                                                >
+                                                    <Minus className="h-4 w-4" />
+                                                </Button>
                                                 <Input
                                                     type="number"
-                                                    value={editValue}
-                                                    onChange={(e) => setEditValue(e.target.value)}
-                                                    className="w-20"
+                                                    value={currentStock}
+                                                    onChange={(e) =>
+                                                        handleStockChange(item.id, parseInt(e.target.value) || 0)
+                                                    }
+                                                    className="w-20 text-center"
                                                     min="0"
+                                                    disabled={saving}
                                                 />
                                                 <Button
-                                                    size="sm"
-                                                    onClick={() => updateStock(item.id, parseInt(editValue))}
+                                                    size="icon"
+                                                    variant="outline"
+                                                    className="h-8 w-8"
+                                                    onClick={() => handleQuickAdjust(item.id, 1)}
+                                                    disabled={saving}
                                                 >
-                                                    Save
-                                                </Button>
-                                                <Button
-                                                    size="sm"
-                                                    variant="ghost"
-                                                    onClick={() => setEditingId(null)}
-                                                >
-                                                    Cancel
+                                                    <Plus className="h-4 w-4" />
                                                 </Button>
                                             </div>
-                                        ) : (
-                                            <span
-                                                className="font-bold cursor-pointer hover:underline"
-                                                onClick={() => {
-                                                    setEditingId(item.id);
-                                                    setEditValue(item.stock_quantity.toString());
-                                                }}
-                                            >
-                                                {item.stock_quantity}
-                                            </span>
-                                        )}
-                                    </TableCell>
-                                    <TableCell>{getStockBadge(item.stock_quantity)}</TableCell>
-                                    <TableCell>
-                                        <div className="flex items-center gap-1">
-                                            <Button
-                                                size="icon"
-                                                variant="outline"
-                                                className="h-8 w-8"
-                                                onClick={() => updateStock(item.id, -1, "add")}
-                                            >
-                                                <Minus className="h-4 w-4" />
-                                            </Button>
-                                            <Button
-                                                size="icon"
-                                                variant="outline"
-                                                className="h-8 w-8"
-                                                onClick={() => updateStock(item.id, 1, "add")}
-                                            >
-                                                <Plus className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
+                                        </TableCell>
+                                        <TableCell>{getStockBadge(currentStock)}</TableCell>
+                                        <TableCell>
+                                            {changed && (
+                                                <Button
+                                                    size="sm"
+                                                    onClick={() => saveStock(item.id)}
+                                                    disabled={saving}
+                                                >
+                                                    <Save className="h-4 w-4 mr-1" />
+                                                    {saving ? "..." : "บันทึก"}
+                                                </Button>
+                                            )}
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            })}
                         </TableBody>
                     </Table>
                 ) : (
                     <div className="text-center py-12">
                         <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                        <h3 className="text-lg font-medium mb-2">
-                            {showAll ? "No products found" : "All stock levels are healthy!"}
-                        </h3>
+                        <h3 className="text-lg font-medium mb-2">ไม่พบสินค้า</h3>
                         <p className="text-muted-foreground">
-                            {showAll
-                                ? "Add products to see inventory"
-                                : "No items are below the low stock threshold"}
+                            {search ? "ไม่พบสินค้าที่ค้นหา" : "ยังไม่มีสินค้าในคลัง"}
                         </p>
                     </div>
                 )}

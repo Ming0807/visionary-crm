@@ -148,6 +148,7 @@ export default function AdminClaimsPage() {
                                 <TableHead>Reason</TableHead>
                                 <TableHead>Status</TableHead>
                                 <TableHead>Date</TableHead>
+                                <TableHead>Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -187,8 +188,16 @@ export default function AdminClaimsPage() {
                                                 {status.label}
                                             </Badge>
                                         </TableCell>
-                                        <TableCell className="text-muted-foreground text-sm">
+                                <TableCell className="text-muted-foreground text-sm">
                                             {formatDate(claim.created_at)}
+                                        </TableCell>
+                                        <TableCell>
+                                            <Button asChild variant="ghost" size="sm">
+                                                <Link href={`/admin/claims/${claim.id}`}>
+                                                    <Eye className="h-4 w-4 mr-1" />
+                                                    ดู
+                                                </Link>
+                                            </Button>
                                         </TableCell>
                                     </TableRow>
                                 );

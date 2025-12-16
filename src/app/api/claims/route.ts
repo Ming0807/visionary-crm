@@ -66,6 +66,46 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        // Notify admin via LINE
+        const adminLineId = process.env.ADMIN_LINE_USER_ID;
+        const lineToken = process.env.LINE_CHANNEL_ACCESS_TOKEN;
+
+        if (adminLineId && lineToken) {
+            const claimTypeLabel: Record<string, string> = {
+                return: "ขอคืนสินค้า",
+                exchange: "ขอเปลี่ยนสินค้า",
+                warranty: "เคลมประกัน",
+                complaint: "ร้องเรียน",
+            };
+
+            const adminMessage = [
+                "🔔 มีเคลมใหม่!",
+                "",
+                `📋 ประเภท: ${claimTypeLabel[claimType] || claimType}`,
+                `📦 Order: ${orderNumber}`,
+                `📝 เหตุผล: ${reason}`,
+                "",
+                "👉 เข้าดูใน CRM Dashboard",
+            ].join("\n");
+
+            try {
+                await fetch("https://api.line.me/v2/bot/message/push", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${lineToken}`,
+                    },
+                    body: JSON.stringify({
+                        to: adminLineId,
+                        messages: [{ type: "text", text: adminMessage }],
+                    }),
+                });
+                console.log("Admin notified via LINE");
+            } catch (lineError) {
+                console.error("Failed to notify admin:", lineError);
+            }
+        }
+
         return NextResponse.json({
             success: true,
             claimId: claim.id,

@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { ShoppingBag, Menu, X, Search, User } from "lucide-react";
+import { ShoppingBag, Menu, X, Search } from "lucide-react";
 import { useState } from "react";
 import { useCart } from "@/context/CartContext";
 import { Button } from "@/components/ui/button";
 import CartDrawer from "@/components/CartDrawer";
+import UserMenu from "@/components/UserMenu";
 
 const navLinks = [
   { href: "/", label: "Home" },
@@ -51,13 +52,10 @@ export default function Navbar() {
                 <span className="sr-only">Search</span>
               </Button>
 
-              {/* Account */}
-              <Button variant="ghost" size="icon" className="hidden sm:flex" asChild>
-                <Link href="/admin">
-                  <User className="h-5 w-5" />
-                  <span className="sr-only">Account</span>
-                </Link>
-              </Button>
+              {/* User Menu (Login/Profile) */}
+              <div className="hidden sm:block">
+                <UserMenu />
+              </div>
 
               {/* Cart */}
               <Button

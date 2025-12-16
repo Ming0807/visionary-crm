@@ -10,7 +10,11 @@ import {
   Package,
   Truck,
   CreditCard,
-  Loader2
+  Loader2,
+  Receipt,
+  CheckCircle,
+  XCircle,
+  ExternalLink
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -389,6 +393,71 @@ export default function OrderDetail({ order }: OrderDetailProps) {
               </div>
             </Card>
           )}
+
+          {/* Payment Proof / Slip */}
+          <Card className="p-6">
+            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <Receipt className="h-5 w-5" />
+              หลักฐานการชำระเงิน
+            </h2>
+            {order.slip_image_url ? (
+              <div className="space-y-4">
+                <div className="relative aspect-[3/4] rounded-lg overflow-hidden border bg-muted">
+                  <Image
+                    src={order.slip_image_url}
+                    alt="Payment slip"
+                    fill
+                    className="object-contain"
+                  />
+                </div>
+                <a
+                  href={order.slip_image_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  เปิดรูปเต็ม
+                </a>
+                
+                {/* Quick Actions for Payment */}
+                {paymentStatus === "verifying" && (
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      className="flex-1 bg-green-600 hover:bg-green-700"
+                      onClick={() => {
+                        setPaymentStatus("paid");
+                        handleUpdateOrder();
+                      }}
+                      disabled={isUpdating}
+                    >
+                      <CheckCircle className="h-4 w-4 mr-1" />
+                      อนุมัติ
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      className="flex-1"
+                      onClick={() => {
+                        setPaymentStatus("cancelled");
+                        handleUpdateOrder();
+                      }}
+                      disabled={isUpdating}
+                    >
+                      <XCircle className="h-4 w-4 mr-1" />
+                      ปฏิเสธ
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-6 text-muted-foreground">
+                <Receipt className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">ยังไม่มีหลักฐานการโอน</p>
+              </div>
+            )}
+          </Card>
 
           {/* Platform */}
           <Card className="p-6">

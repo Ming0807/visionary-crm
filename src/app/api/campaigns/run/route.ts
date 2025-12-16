@@ -105,6 +105,12 @@ export async function POST(request: NextRequest) {
                 .replace(/\{\{points\}\}/g, customer.points?.toString() || "0");
 
             try {
+                // DEBUG: Log the USER ID being sent
+                console.log("=== CAMPAIGN SENDING TO ===");
+                console.log("Customer:", customer.name);
+                console.log("LINE User ID:", customer.line_user_id);
+                console.log("Message preview:", personalizedMessage.slice(0, 50));
+
                 // Send LINE message
                 const lineResponse = await fetch("https://api.line.me/v2/bot/message/push", {
                     method: "POST",
@@ -117,6 +123,8 @@ export async function POST(request: NextRequest) {
                         messages: [{ type: "text", text: personalizedMessage }],
                     }),
                 });
+
+                console.log("LINE response status:", lineResponse.status);
 
                 const status = lineResponse.ok ? "sent" : "failed";
 

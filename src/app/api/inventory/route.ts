@@ -7,37 +7,43 @@ export async function GET(request: NextRequest) {
         const threshold = parseInt(searchParams.get("threshold") || "5");
         const showAll = searchParams.get("all") === "true";
 
-        // Get all variants with stock info
-        let query = supabase
+        // Get all variants with stock info from inventory table
+        const { data, error } = await supabase
             .from("product_variants")
             .select(`
                 id,
                 color_name,
-                stock_quantity,
                 sku,
                 products (
                     id,
                     name,
                     brand,
                     is_active
+                ),
+                inventory (
+                    quantity
                 )
             `)
-            .eq("products.is_active", true)
-            .order("stock_quantity", { ascending: true });
-
-        if (!showAll) {
-            query = query.lte("stock_quantity", threshold);
-        }
-
-        const { data, error } = await query;
+            .order("created_at", { ascending: false });
 
         if (error) {
             console.error("Inventory fetch error:", error);
             return NextResponse.json({ error: error.message }, { status: 500 });
         }
 
-        // Calculate stats
-        const allVariants = data || [];
+        // Transform data to include stock_quantity
+        const allVariants = (data || []).map((v) => {
+            const product = Array.isArray(v.products) ? v.products[0] : v.products;
+            return {
+                id: v.id,
+                color_name: v.color_name,
+                sku: v.sku,
+                stock_quantity: v.inventory?.[0]?.quantity || 0,
+                products: product,
+            };
+        }).filter((v) => v.products?.is_active !== false);
+
+        // Filter by threshold if not showing all
         const lowStock = allVariants.filter((v) => v.stock_quantity <= threshold && v.stock_quantity > 0);
         const outOfStock = allVariants.filter((v) => v.stock_quantity === 0);
         const totalStock = allVariants.reduce((sum, v) => sum + (v.stock_quantity || 0), 0);
@@ -53,11 +59,12 @@ export async function GET(request: NextRequest) {
             },
         });
     } catch (error) {
+        console.error("Inventory error:", error);
         return NextResponse.json({ error: "Internal error" }, { status: 500 });
     }
 }
 
-// PATCH - Update stock
+// PATCH - Update stock in inventory table
 export async function PATCH(request: NextRequest) {
     try {
         const body = await request.json();
@@ -67,36 +74,45 @@ export async function PATCH(request: NextRequest) {
             return NextResponse.json({ error: "Missing fields" }, { status: 400 });
         }
 
-        let updateQuery;
-        if (type === "add") {
-            // Add to current stock
-            const { data: current } = await supabase
-                .from("product_variants")
-                .select("stock_quantity")
-                .eq("id", variantId)
+        // Check if inventory record exists
+        const { data: existing } = await supabase
+            .from("inventory")
+            .select("id, quantity")
+            .eq("variant_id", variantId)
+            .single();
+
+        let newQuantity = quantity;
+        if (type === "add" && existing) {
+            newQuantity = (existing.quantity || 0) + quantity;
+        }
+        newQuantity = Math.max(0, newQuantity);
+
+        let result;
+        if (existing) {
+            // Update existing
+            result = await supabase
+                .from("inventory")
+                .update({ quantity: newQuantity })
+                .eq("variant_id", variantId)
+                .select()
                 .single();
-
-            const newQuantity = (current?.stock_quantity || 0) + quantity;
-            updateQuery = supabase
-                .from("product_variants")
-                .update({ stock_quantity: Math.max(0, newQuantity) })
-                .eq("id", variantId);
         } else {
-            // Set absolute value
-            updateQuery = supabase
-                .from("product_variants")
-                .update({ stock_quantity: Math.max(0, quantity) })
-                .eq("id", variantId);
+            // Create new
+            result = await supabase
+                .from("inventory")
+                .insert({ variant_id: variantId, quantity: newQuantity })
+                .select()
+                .single();
         }
 
-        const { data, error } = await updateQuery.select().single();
-
-        if (error) {
-            return NextResponse.json({ error: error.message }, { status: 500 });
+        if (result.error) {
+            return NextResponse.json({ error: result.error.message }, { status: 500 });
         }
 
-        return NextResponse.json(data);
+        return NextResponse.json(result.data);
     } catch (error) {
+        console.error("Inventory update error:", error);
         return NextResponse.json({ error: "Internal error" }, { status: 500 });
     }
 }
+

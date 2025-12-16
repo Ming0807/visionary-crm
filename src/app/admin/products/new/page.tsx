@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
+import ImageUploader from "@/components/ImageUploader";
 
 interface VariantForm {
   id: string;
@@ -26,7 +27,7 @@ interface VariantForm {
   costPrice: string;
   frameMaterial: string;
   sizeLabel: string;
-  imageUrl: string;
+  images: string[];
   stock: string;
 }
 
@@ -57,7 +58,7 @@ export default function NewProductPage() {
       costPrice: "",
       frameMaterial: "",
       sizeLabel: "",
-      imageUrl: "",
+      images: [],
       stock: "10",
     },
   ]);
@@ -84,10 +85,16 @@ export default function NewProductPage() {
         costPrice: "",
         frameMaterial: "",
         sizeLabel: "",
-        imageUrl: "",
+        images: [],
         stock: "10",
       },
     ]);
+  };
+
+  const handleVariantImages = (id: string, newImages: string[]) => {
+    setVariants((prev) =>
+      prev.map((v) => (v.id === id ? { ...v, images: newImages } : v))
+    );
   };
 
   const removeVariant = (id: string) => {
@@ -139,7 +146,7 @@ export default function NewProductPage() {
             size_label: variant.sizeLabel || null,
             price: parseFloat(variant.price),
             cost_price: variant.costPrice ? parseFloat(variant.costPrice) : 0,
-            images: variant.imageUrl ? [variant.imageUrl] : [],
+            images: variant.images,
             is_active: true,
           })
           .select("id")
@@ -406,14 +413,13 @@ export default function NewProductPage() {
                     />
                   </div>
 
-                  <div className="space-y-2 sm:col-span-2">
-                    <Label>Image URL</Label>
-                    <Input
-                      value={variant.imageUrl}
-                      onChange={(e) =>
-                        handleVariantChange(variant.id, "imageUrl", e.target.value)
-                      }
-                      placeholder="https://..."
+                  <div className="space-y-2 sm:col-span-3">
+                    <Label>Product Images</Label>
+                    <ImageUploader
+                      images={variant.images}
+                      onChange={(newImages) => handleVariantImages(variant.id, newImages)}
+                      maxImages={5}
+                      type="product"
                     />
                   </div>
                 </div>

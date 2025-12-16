@@ -12,7 +12,7 @@ function generateOrderNumber() {
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
-        const { customer, shippingAddress, items, subtotal, shippingCost, totalAmount } = body;
+        const { customerId: providedCustomerId, customer, shippingAddress, items, subtotal, shippingCost, totalAmount } = body;
 
         // Validate required fields
         if (!customer?.name || !customer?.phone || !items?.length) {
@@ -22,39 +22,41 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Check/Create customer
-        let customerId: string | null = null;
+        // Use provided customerId (from logged-in user) or find/create by phone
+        let customerId: string | null = providedCustomerId || null;
 
-        // Try to find existing customer by phone
-        const { data: existingCustomer } = await supabase
-            .from("customers")
-            .select("id")
-            .eq("phone", customer.phone)
-            .single();
-
-        if (existingCustomer) {
-            customerId = existingCustomer.id;
-        } else {
-            // Create new customer
-            const { data: newCustomer, error: customerError } = await supabase
+        if (!customerId) {
+            // Try to find existing customer by phone
+            const { data: existingCustomer } = await supabase
                 .from("customers")
-                .insert({
-                    name: customer.name,
-                    phone: customer.phone,
-                    email: customer.email || null,
-                    address: shippingAddress,
-                })
                 .select("id")
+                .eq("phone", customer.phone)
                 .single();
 
-            if (customerError) {
-                console.error("Customer creation error:", customerError);
-                return NextResponse.json(
-                    { error: "Failed to create customer" },
-                    { status: 500 }
-                );
+            if (existingCustomer) {
+                customerId = existingCustomer.id;
+            } else {
+                // Create new customer
+                const { data: newCustomer, error: customerError } = await supabase
+                    .from("customers")
+                    .insert({
+                        name: customer.name,
+                        phone: customer.phone,
+                        email: customer.email || null,
+                        address: shippingAddress,
+                    })
+                    .select("id")
+                    .single();
+
+                if (customerError) {
+                    console.error("Customer creation error:", customerError);
+                    return NextResponse.json(
+                        { error: "Failed to create customer" },
+                        { status: 500 }
+                    );
+                }
+                customerId = newCustomer.id;
             }
-            customerId = newCustomer.id;
         }
 
         // Create order
