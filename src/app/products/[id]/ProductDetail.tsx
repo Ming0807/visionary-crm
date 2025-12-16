@@ -1,10 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ShoppingBag, Check, Truck, Shield, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/context/CartContext";
+import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Product, ProductVariant, Inventory } from "@/lib/supabase";
 
@@ -18,7 +19,30 @@ export default function ProductDetail({ product }: ProductDetailProps) {
   const [selectedVariantIndex, setSelectedVariantIndex] = useState(0);
   const [mainImageIndex, setMainImageIndex] = useState(0);
   const { addItem } = useCart();
+  const { customer } = useAuth();
   const { toast } = useToast();
+
+  // Track product view behavior
+  useEffect(() => {
+    const trackView = async () => {
+      try {
+        await fetch("/api/behaviors", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            customerId: customer?.id || null,
+            behaviorType: "view",
+            productId: product.id,
+            variantId: product.variants[0]?.id || null,
+            metadata: { source: "product_page" },
+          }),
+        });
+      } catch (error) {
+        console.error("Failed to track view:", error);
+      }
+    };
+    trackView();
+  }, [product.id, customer?.id, product.variants]);
 
   const selectedVariant = product.variants[selectedVariantIndex];
   const images = selectedVariant?.images || [];

@@ -19,6 +19,7 @@ interface Customer {
     tier: string;
     points: number;
     profileStatus: "incomplete" | "complete";
+    birthday: string | null;
 }
 
 interface AuthContextType {

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, User, Bell, Shield, Loader2 } from "lucide-react";
+import { ChevronLeft, User, Bell, Shield, Loader2, Cake } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,6 +23,7 @@ export default function SettingsPage() {
         phone: customer?.phone || "",
         email: customer?.email || "",
         address: "",
+        birthday: customer?.birthday || "",
     });
 
     if (isLoading) {
@@ -50,6 +51,7 @@ export default function SettingsPage() {
                     phone: form.phone,
                     email: form.email || null,
                     address_json: form.address ? { full: form.address } : null,
+                    birthday: form.birthday || null,
                 })
                 .eq("id", customer.id);
 
@@ -109,6 +111,18 @@ export default function SettingsPage() {
                             onChange={(e) => setForm({ ...form, address: e.target.value })}
                             rows={3}
                         />
+                    </div>
+                    <div>
+                        <Label className="flex items-center gap-2">
+                            <Cake className="h-4 w-4" />
+                            วันเกิด
+                        </Label>
+                        <Input
+                            type="date"
+                            value={form.birthday}
+                            onChange={(e) => setForm({ ...form, birthday: e.target.value })}
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">รับส่วนลดพิเศษวันเกิด!</p>
                     </div>
                     <Button onClick={handleSave} disabled={isSaving}>
                         {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}

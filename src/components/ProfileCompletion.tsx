@@ -32,6 +32,7 @@ export default function ProfileCompletion({ customer, onClose, onSave }: Profile
         phone: customer.phone || "",
         email: customer.email || "",
         address: "",
+        birthday: "",
     });
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -54,6 +55,7 @@ export default function ProfileCompletion({ customer, onClose, onSave }: Profile
                     phone: form.phone,
                     email: form.email || null,
                     address_json: form.address ? { full: form.address } : null,
+                    birthday: form.birthday || null,
                     profile_status: "complete",
                 })
                 .eq("id", customer.id);
@@ -151,6 +153,17 @@ export default function ProfileCompletion({ customer, onClose, onSave }: Profile
                             placeholder="123 ถ.สุขุมวิท แขวงคลองตัน เขตวัฒนา กทม. 10110"
                             rows={3}
                         />
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="birthday">วันเกิด 🎂</Label>
+                        <Input
+                            id="birthday"
+                            type="date"
+                            value={form.birthday}
+                            onChange={(e) => setForm({ ...form, birthday: e.target.value })}
+                        />
+                        <p className="text-xs text-muted-foreground">รับส่วนลดพิเศษวันเกิดของคุณ!</p>
                     </div>
 
                     <div className="flex gap-3 pt-2">

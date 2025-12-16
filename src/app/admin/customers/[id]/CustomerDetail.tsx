@@ -18,7 +18,10 @@ import {
   FileText,
   MessageSquare,
   Plus,
-  Minus
+  Minus,
+  Cake,
+  Calendar,
+  AlertTriangle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -46,6 +49,10 @@ interface CustomerDetailProps {
     purchase_count: number;
     last_purchase_at: string | null;
     created_at: string;
+    birthday: string | null;
+    join_date: string | null;
+    segment: string | null;
+    last_order_at: string | null;
     social_identities: Array<{
       platform: string;
       social_user_id: string;
@@ -190,7 +197,68 @@ export default function CustomerDetail({ customer }: CustomerDetailProps) {
                   <span>{JSON.stringify(customer.address)}</span>
                 </div>
               )}
+              {customer.birthday && (
+                <div className="flex items-center gap-3 text-sm">
+                  <Cake className="h-4 w-4 text-muted-foreground" />
+                  <span>
+                    {new Date(customer.birthday).toLocaleDateString("th-TH", { day: "numeric", month: "short" })}
+                    {/* Check if birthday is within next 7 days */}
+                    {(() => {
+                      const birthday = new Date(customer.birthday);
+                      const today = new Date();
+                      birthday.setFullYear(today.getFullYear());
+                      const diffDays = Math.ceil((birthday.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                      if (diffDays >= 0 && diffDays <= 7) {
+                        return <Badge className="ml-2 bg-pink-100 text-pink-700">🎂 Soon!</Badge>;
+                      }
+                      return null;
+                    })()}
+                  </span>
+                </div>
+              )}
+              {customer.join_date && (
+                <div className="flex items-center gap-3 text-sm">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">
+                    Member since {new Date(customer.join_date).toLocaleDateString("th-TH", { year: "numeric", month: "short" })}
+                  </span>
+                </div>
+              )}
             </div>
+
+            {/* Customer Segment Badge */}
+            {customer.segment && (
+              <div className="mt-4 p-3 rounded-lg bg-muted/50">
+                <div className="flex items-center gap-2">
+                  {customer.segment === "champion" && <Star className="h-4 w-4 text-yellow-500" />}
+                  {customer.segment === "at_risk" && <AlertTriangle className="h-4 w-4 text-orange-500" />}
+                  {customer.segment === "lost" && <AlertTriangle className="h-4 w-4 text-red-500" />}
+                  {customer.segment === "new" && <Gift className="h-4 w-4 text-green-500" />}
+                  {customer.segment === "loyal" && <Heart className="h-4 w-4 text-pink-500" />}
+                  {customer.segment === "promising" && <ShoppingCart className="h-4 w-4 text-blue-500" />}
+                  <span className="text-sm font-medium capitalize">{customer.segment.replace("_", " ")}</span>
+                  <Badge 
+                    variant="outline" 
+                    className={
+                      customer.segment === "champion" ? "bg-yellow-50 text-yellow-700 border-yellow-200" :
+                      customer.segment === "at_risk" ? "bg-orange-50 text-orange-700 border-orange-200" :
+                      customer.segment === "lost" ? "bg-red-50 text-red-700 border-red-200" :
+                      customer.segment === "loyal" ? "bg-pink-50 text-pink-700 border-pink-200" :
+                      customer.segment === "new" ? "bg-green-50 text-green-700 border-green-200" :
+                      "bg-blue-50 text-blue-700 border-blue-200"
+                    }
+                  >
+                    Segment
+                  </Badge>
+                </div>
+                {customer.segment === "at_risk" && (
+                  <p className="text-xs text-orange-600 mt-1">⚠️ ลูกค้าไม่มีกิจกรรมมากกว่า 60 วัน</p>
+                )}
+                {customer.segment === "lost" && (
+                  <p className="text-xs text-red-600 mt-1">⚠️ ลูกค้าหายไปมากกว่า 180 วัน - ควร win-back</p>
+                )}
+              </div>
+            )}
 
             <Separator className="my-4" />
 
