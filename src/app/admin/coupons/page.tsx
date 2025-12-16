@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Plus, Tag, Percent, DollarSign, Calendar, Users, MoreVertical } from "lucide-react";
+import { Plus, Tag, Percent, DollarSign, Calendar, Users, MoreVertical, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -180,7 +180,7 @@ export default function AdminCouponsPage() {
                                     </div>
                                 </div>
 
-                                {/* Right: Usage Stats */}
+                                {/* Right: Usage Stats & Actions */}
                                 <div className="flex items-center gap-6">
                                     <div className="text-center">
                                         <p className="text-2xl font-bold">{coupon.usage_count}</p>
@@ -196,6 +196,11 @@ export default function AdminCouponsPage() {
                                             </div>
                                         )}
                                     </div>
+                                    <Button asChild variant="ghost" size="icon">
+                                        <Link href={`/admin/coupons/${coupon.id}/edit`}>
+                                            <Edit className="h-4 w-4" />
+                                        </Link>
+                                    </Button>
                                 </div>
                             </div>
                         </Card>
