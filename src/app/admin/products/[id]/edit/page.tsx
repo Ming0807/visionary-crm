@@ -64,6 +64,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
   });
 
   const [variants, setVariants] = useState<VariantForm[]>([]);
+  const [deletedVariantIds, setDeletedVariantIds] = useState<string[]>([]);
 
   // Load product data
   useEffect(() => {
@@ -172,6 +173,11 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
 
   const removeVariant = (id: string) => {
     if (variants.length > 1) {
+      const variant = variants.find((v) => v.id === id);
+      // Track if this is an existing variant (has dbId) for later deletion
+      if (variant?.dbId) {
+        setDeletedVariantIds((prev) => [...prev, variant.dbId!]);
+      }
       setVariants((prev) => prev.filter((v) => v.id !== id));
     }
   };
@@ -195,6 +201,11 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
         .eq("id", resolvedParams.id);
 
       if (productError) throw productError;
+
+      // Delete removed variants from database
+      for (const dbId of deletedVariantIds) {
+        await supabase.from("product_variants").delete().eq("id", dbId);
+      }
 
       // Update/Create variants
       for (const variant of variants) {
