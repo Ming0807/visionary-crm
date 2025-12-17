@@ -93,16 +93,12 @@ export async function POST(request: NextRequest) {
         }
 
         // Verify signature for actual message events
-        // TEMPORARILY DISABLED FOR DEBUGGING
         const isValidSignature = verifySignature(body, signature, channelSecret);
-        console.log("Signature validation:", isValidSignature);
-        console.log("Events count:", events.length);
 
-        // Skip signature check for now to debug
-        // if (!isValidSignature) {
-        //     console.error("Invalid LINE signature");
-        //     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
-        // }
+        if (!isValidSignature) {
+            console.error("Invalid LINE signature - body length:", body.length);
+            return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+        }
 
         // Process each event
         for (const event of events) {

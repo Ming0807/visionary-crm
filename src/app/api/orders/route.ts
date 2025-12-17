@@ -157,23 +157,50 @@ export async function POST(request: NextRequest) {
     }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
     try {
-        const { data: orders, error } = await supabase
+        const { searchParams } = new URL(request.url);
+        const page = parseInt(searchParams.get("page") || "1");
+        const limit = parseInt(searchParams.get("limit") || "20");
+        const search = searchParams.get("search") || "";
+        const paymentStatus = searchParams.get("payment_status") || "";
+        const fulfillmentStatus = searchParams.get("fulfillment_status") || "";
+
+        const offset = (page - 1) * limit;
+
+        // Build query with optimized field selection
+        let query = supabase
             .from("orders")
             .select(`
-        *,
-        customer:customers(*),
-        items:order_items(
-          *,
-          variant:product_variants(
-            *,
-            product:products(*)
-          )
-        )
-      `)
+                id,
+                order_number,
+                total_amount,
+                payment_status,
+                fulfillment_status,
+                platform_source,
+                created_at,
+                customer:customers(id, name, phone)
+            `, { count: "exact" });
+
+        // Apply search filter
+        if (search) {
+            query = query.ilike("order_number", `%${search}%`);
+        }
+
+        // Apply status filters
+        if (paymentStatus) {
+            query = query.eq("payment_status", paymentStatus);
+        }
+        if (fulfillmentStatus) {
+            query = query.eq("fulfillment_status", fulfillmentStatus);
+        }
+
+        // Apply sorting and pagination
+        query = query
             .order("created_at", { ascending: false })
-            .limit(50);
+            .range(offset, offset + limit - 1);
+
+        const { data: orders, error, count } = await query;
 
         if (error) {
             console.error("Error fetching orders:", error);
@@ -183,7 +210,19 @@ export async function GET() {
             );
         }
 
-        return NextResponse.json(orders);
+        return NextResponse.json({
+            orders,
+            pagination: {
+                page,
+                limit,
+                total: count || 0,
+                totalPages: Math.ceil((count || 0) / limit),
+            }
+        }, {
+            headers: {
+                'Cache-Control': 'private, max-age=30, stale-while-revalidate=60',
+            }
+        });
     } catch (error) {
         console.error("Error:", error);
         return NextResponse.json(

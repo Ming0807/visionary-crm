@@ -1,29 +1,52 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 
-// GET - List all campaigns
+// GET - List all campaigns with pagination
 export async function GET(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url);
+        const page = parseInt(searchParams.get("page") || "1");
+        const limit = parseInt(searchParams.get("limit") || "20");
         const status = searchParams.get("status");
+        const type = searchParams.get("type");
+
+        const offset = (page - 1) * limit;
 
         let query = supabase
             .from("campaigns")
-            .select("*, coupons(code, discount_type, discount_value)")
+            .select("*, coupons(code, discount_type, discount_value)", { count: "exact" })
             .order("created_at", { ascending: false });
 
         if (status && status !== "all") {
             query = query.eq("status", status);
         }
 
-        const { data, error } = await query;
+        if (type) {
+            query = query.eq("campaign_type", type);
+        }
+
+        query = query.range(offset, offset + limit - 1);
+
+        const { data, error, count } = await query;
 
         if (error) {
             console.error("Campaigns fetch error:", error);
             return NextResponse.json({ error: error.message }, { status: 500 });
         }
 
-        return NextResponse.json(data || []);
+        return NextResponse.json({
+            campaigns: data || [],
+            pagination: {
+                page,
+                limit,
+                total: count || 0,
+                totalPages: Math.ceil((count || 0) / limit),
+            }
+        }, {
+            headers: {
+                'Cache-Control': 'private, max-age=30, stale-while-revalidate=60',
+            }
+        });
     } catch (error) {
         return NextResponse.json({ error: "Internal error" }, { status: 500 });
     }

@@ -84,7 +84,8 @@ export default function AdminCampaignsPage() {
         try {
             const res = await fetch("/api/campaigns");
             const data = await res.json();
-            setCampaigns(data || []);
+            // Handle both old format (array) and new format ({ campaigns: [] })
+            setCampaigns(Array.isArray(data) ? data : data.campaigns || []);
         } catch (error) {
             console.error("Failed to fetch campaigns:", error);
         } finally {
