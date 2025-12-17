@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, User, Bell, Shield, Loader2, Cake } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -19,12 +19,25 @@ export default function SettingsPage() {
     const { toast } = useToast();
     const [isSaving, setIsSaving] = useState(false);
     const [form, setForm] = useState({
-        name: customer?.name || profile?.displayName || "",
-        phone: customer?.phone || "",
-        email: customer?.email || "",
+        name: "",
+        phone: "",
+        email: "",
         address: "",
-        birthday: customer?.birthday || "",
+        birthday: "",
     });
+
+    // Sync form with customer data when loaded
+    useEffect(() => {
+        if (customer) {
+            setForm({
+                name: customer.name || profile?.displayName || "",
+                phone: customer.phone || "",
+                email: customer.email || "",
+                address: customer.address_json?.full || "",
+                birthday: customer.birthday || "",
+            });
+        }
+    }, [customer, profile]);
 
     if (isLoading) {
         return (

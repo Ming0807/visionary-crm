@@ -206,10 +206,15 @@ export default function CustomerDetail({ customer }: CustomerDetailProps) {
                     {(() => {
                       const birthday = new Date(customer.birthday);
                       const today = new Date();
+                      // Reset both to midnight for accurate day comparison
+                      today.setHours(0, 0, 0, 0);
                       birthday.setFullYear(today.getFullYear());
-                      const diffDays = Math.ceil((birthday.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-                      if (diffDays >= 0 && diffDays <= 7) {
-                        return <Badge className="ml-2 bg-pink-100 text-pink-700">🎂 Soon!</Badge>;
+                      birthday.setHours(0, 0, 0, 0);
+                      const diffDays = Math.round((birthday.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                      if (diffDays === 0) {
+                        return <Badge className="ml-2 bg-pink-500 text-white">🎉 วันนี้!</Badge>;
+                      } else if (diffDays > 0 && diffDays <= 7) {
+                        return <Badge className="ml-2 bg-pink-100 text-pink-700">🎂 อีก {diffDays} วัน</Badge>;
                       }
                       return null;
                     })()}

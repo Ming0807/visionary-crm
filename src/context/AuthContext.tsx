@@ -20,6 +20,7 @@ interface Customer {
     points: number;
     profileStatus: "incomplete" | "complete";
     birthday: string | null;
+    address_json: { full?: string } | null;
 }
 
 interface AuthContextType {

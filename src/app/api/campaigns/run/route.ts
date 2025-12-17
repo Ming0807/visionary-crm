@@ -39,17 +39,61 @@ export async function POST(request: NextRequest) {
                 line_user_id: c.social_identities?.[0]?.social_user_id
             }));
         } else {
-            // Normal mode: use SQL functions
+            // Normal mode: use direct queries instead of RPC (fix for type mismatch)
             if (type === "birthday") {
-                const { data, error } = await supabase.rpc("get_birthday_customers_today");
-                if (error) console.error("Birthday RPC error:", error);
-                targetCustomers = data || [];
-            } else if (type === "re_engagement") {
-                const { data, error } = await supabase.rpc("get_inactive_customers", {
-                    days_inactive: 30,
+                // Get today's birthday customers (by day and month)
+                const today = new Date();
+                const month = today.getMonth() + 1; // JS months are 0-indexed
+                const day = today.getDate();
+
+                const { data: birthdayCustomers, error } = await supabase
+                    .from("customers")
+                    .select(`
+                        id, name, phone, birthday, points,
+                        social_identities(social_user_id, platform)
+                    `)
+                    .not("birthday", "is", null);
+
+                if (error) console.error("Birthday query error:", error);
+
+                // Filter by birthday matching today
+                const filtered = (birthdayCustomers || []).filter(c => {
+                    if (!c.birthday) return false;
+                    const bday = new Date(c.birthday);
+                    return bday.getMonth() + 1 === month && bday.getDate() === day;
                 });
-                if (error) console.error("Re-engagement RPC error:", error);
-                targetCustomers = data || [];
+
+                targetCustomers = filtered.map(c => ({
+                    id: c.id,
+                    name: c.name,
+                    points: c.points,
+                    line_user_id: c.social_identities?.find((s: { platform: string }) => s.platform === "line")?.social_user_id
+                }));
+
+                console.log(`Birthday check: Found ${targetCustomers.length} customers born on ${day}/${month}`);
+            } else if (type === "re_engagement") {
+                // Get inactive customers (no order in last 30 days)
+                const thirtyDaysAgo = new Date();
+                thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+                const { data: inactiveCustomers, error } = await supabase
+                    .from("customers")
+                    .select(`
+                        id, name, phone, points, last_order_at,
+                        social_identities(social_user_id, platform)
+                    `)
+                    .or(`last_order_at.is.null,last_order_at.lt.${thirtyDaysAgo.toISOString()}`);
+
+                if (error) console.error("Re-engagement query error:", error);
+
+                targetCustomers = (inactiveCustomers || []).map(c => ({
+                    id: c.id,
+                    name: c.name,
+                    points: c.points,
+                    line_user_id: c.social_identities?.find((s: { platform: string }) => s.platform === "line")?.social_user_id
+                }));
+
+                console.log(`Re-engagement: Found ${targetCustomers.length} inactive customers`);
             } else {
                 // Fallback: get all LINE customers for other types
                 const { data: allCustomers } = await supabase
@@ -155,11 +199,20 @@ export async function POST(request: NextRequest) {
 
         // Update campaign stats
         if (campaignId) {
+            // Get current campaign stats first
+            const { data: currentCampaign } = await supabase
+                .from("campaigns")
+                .select("total_sent")
+                .eq("id", campaignId)
+                .single();
+
+            const currentSent = currentCampaign?.total_sent || 0;
+
             await supabase
                 .from("campaigns")
                 .update({
                     last_run_at: new Date().toISOString(),
-                    total_sent: supabase.rpc("increment", { x: sentCount }),
+                    total_sent: currentSent + sentCount,
                 })
                 .eq("id", campaignId);
         }

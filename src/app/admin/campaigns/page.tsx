@@ -13,7 +13,8 @@ import {
     BarChart3,
     Gift,
     Clock,
-    RefreshCw
+    RefreshCw,
+    Edit
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -39,6 +40,17 @@ interface Campaign {
     };
 }
 
+interface BirthdayCustomer {
+    id: string;
+    name: string | null;
+    phone: string | null;
+    birthday: string;
+    daysUntil: number;
+    birthdayDate: string;
+    tier: string;
+    total_spent: number;
+}
+
 const TYPE_CONFIG: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
     birthday: { label: "Birthday", icon: <Gift className="h-4 w-4" />, color: "bg-pink-100 text-pink-700" },
     re_engagement: { label: "Re-engagement", icon: <RefreshCw className="h-4 w-4" />, color: "bg-blue-100 text-blue-700" },
@@ -56,11 +68,16 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
 
 export default function AdminCampaignsPage() {
     const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+    const [birthdays, setBirthdays] = useState<BirthdayCustomer[]>([]);
     const [loading, setLoading] = useState(true);
     const [running, setRunning] = useState<string | null>(null);
+    const [selectedCustomers, setSelectedCustomers] = useState<string[]>([]);
+    const [sendMessage, setSendMessage] = useState("🎂 สุขสันต์วันเกิดครับ/ค่ะ คุณ{{name}}! รับส่วนลดพิเศษ 10% วันนี้เท่านั้น!");
+    const [sending, setSending] = useState(false);
 
     useEffect(() => {
         fetchCampaigns();
+        fetchBirthdays();
     }, []);
 
     const fetchCampaigns = async () => {
@@ -72,6 +89,58 @@ export default function AdminCampaignsPage() {
             console.error("Failed to fetch campaigns:", error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchBirthdays = async () => {
+        try {
+            const res = await fetch("/api/customers/birthdays?days=7");
+            const data = await res.json();
+            setBirthdays(data.customers || []);
+        } catch (error) {
+            console.error("Failed to fetch birthdays:", error);
+        }
+    };
+
+    const toggleCustomerSelection = (customerId: string) => {
+        setSelectedCustomers(prev => 
+            prev.includes(customerId) 
+                ? prev.filter(id => id !== customerId)
+                : [...prev, customerId]
+        );
+    };
+
+    const selectAllBirthdays = () => {
+        setSelectedCustomers(birthdays.map(b => b.id));
+    };
+
+    const clearSelection = () => {
+        setSelectedCustomers([]);
+    };
+
+    const sendToSelected = async () => {
+        if (selectedCustomers.length === 0) {
+            alert("กรุณาเลือกลูกค้าก่อน");
+            return;
+        }
+        setSending(true);
+        try {
+            const res = await fetch("/api/campaigns/send", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    customerIds: selectedCustomers,
+                    message: sendMessage
+                })
+            });
+            const result = await res.json();
+            alert(`ส่งสำเร็จ ${result.sent} / ${result.total} คน`);
+            setSelectedCustomers([]);
+        } catch (error) {
+            alert("เกิดข้อผิดพลาดในการส่ง");
+            console.error(error);
+        } finally {
+            setSending(false);
         }
     };
 
@@ -208,75 +277,219 @@ export default function AdminCampaignsPage() {
                 </Card>
             </div>
 
+            {/* Birthday Section */}
+            {birthdays.length > 0 && (
+                <Card className="p-6 mb-6 border-2 border-pink-200 bg-pink-50/50">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                            <Gift className="h-5 w-5 text-pink-600" />
+                            <h2 className="font-semibold text-pink-900">🎂 วันเกิดลูกค้าใน 7 วันข้างหน้า ({birthdays.length} คน)</h2>
+                        </div>
+                        <div className="flex gap-2">
+                            <Button variant="outline" size="sm" onClick={selectAllBirthdays}>
+                                เลือกทั้งหมด
+                            </Button>
+                            {selectedCustomers.length > 0 && (
+                                <Button variant="outline" size="sm" onClick={clearSelection}>
+                                    ล้าง ({selectedCustomers.length})
+                                </Button>
+                            )}
+                        </div>
+                    </div>
+                    
+                    {/* Customer List with Checkboxes */}
+                    <div className="grid gap-3 mb-4">
+                        {birthdays.map((customer) => (
+                            <div 
+                                key={customer.id} 
+                                className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors ${
+                                    selectedCustomers.includes(customer.id) 
+                                        ? 'bg-pink-100 border-pink-300' 
+                                        : 'bg-white hover:bg-pink-50'
+                                }`}
+                                onClick={() => toggleCustomerSelection(customer.id)}
+                            >
+                                <div className="flex items-center gap-3">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={selectedCustomers.includes(customer.id)}
+                                        onChange={() => toggleCustomerSelection(customer.id)}
+                                        className="h-4 w-4 text-pink-600 rounded focus:ring-pink-500"
+                                        onClick={(e) => e.stopPropagation()}
+                                    />
+                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg ${customer.daysUntil === 0 ? 'bg-pink-500 text-white' : 'bg-pink-100'}`}>
+                                        {customer.daysUntil === 0 ? '🎉' : '🎂'}
+                                    </div>
+                                    <div>
+                                        <p className="font-medium">{customer.name || 'ไม่ระบุชื่อ'}</p>
+                                        <p className="text-sm text-muted-foreground">
+                                            {customer.phone || '-'} • {customer.birthdayDate}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Badge className={customer.daysUntil === 0 ? 'bg-pink-500 text-white' : 'bg-pink-100 text-pink-700'}>
+                                        {customer.daysUntil === 0 ? '🎉 วันนี้!' : `อีก ${customer.daysUntil} วัน`}
+                                    </Badge>
+                                    <Link href={`/admin/customers/${customer.id}`} onClick={(e) => e.stopPropagation()}>
+                                        <Button variant="outline" size="sm">ดูโปรไฟล์</Button>
+                                    </Link>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Message Input and Send Button */}
+                    {selectedCustomers.length > 0 && (
+                        <div className="border-t border-pink-200 pt-4 mt-4">
+                            <label className="block text-sm font-medium text-pink-900 mb-2">
+                                ข้อความอวยพร (ใช้ {"{{name}}"} สำหรับชื่อลูกค้า)
+                            </label>
+                            <textarea 
+                                value={sendMessage}
+                                onChange={(e) => setSendMessage(e.target.value)}
+                                className="w-full p-3 border border-pink-200 rounded-lg mb-3 focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                                rows={3}
+                            />
+                            <Button 
+                                className="w-full bg-pink-500 hover:bg-pink-600 text-white"
+                                onClick={sendToSelected}
+                                disabled={sending}
+                            >
+                                <Send className="h-4 w-4 mr-2" />
+                                {sending ? 'กำลังส่ง...' : `ส่งให้ ${selectedCustomers.length} คนที่เลือก`}
+                            </Button>
+                        </div>
+                    )}
+                </Card>
+            )}
+
             {/* Campaigns List */}
             {campaigns.length > 0 ? (
                 <div className="grid gap-4">
                     {campaigns.map((campaign) => {
                         const type = TYPE_CONFIG[campaign.campaign_type] || TYPE_CONFIG.custom;
                         const status = STATUS_CONFIG[campaign.status] || STATUS_CONFIG.draft;
+                        const successRate = campaign.total_sent > 0 
+                            ? Math.round((campaign.total_opened / campaign.total_sent) * 100) || 0
+                            : 0;
                         return (
-                            <Card key={campaign.id} className="p-6">
-                                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                                    <div className="flex items-start gap-4">
-                                        <div className={`p-3 rounded-xl ${type.color}`}>
-                                            {type.icon}
-                                        </div>
-                                        <div>
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <h3 className="font-semibold">{campaign.name}</h3>
-                                                <Badge className={status.color}>{status.label}</Badge>
+                            <Card key={campaign.id} className="overflow-hidden">
+                                {/* Header with colored bar */}
+                                <div className={`h-1 ${type.color.split(' ')[0]}`} />
+                                
+                                <div className="p-6">
+                                    {/* Top Row: Icon, Name, Status, Actions */}
+                                    <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4 mb-4">
+                                        <div className="flex items-start gap-4">
+                                            <div className={`p-3 rounded-xl ${type.color}`}>
+                                                {type.icon}
                                             </div>
-                                            <p className="text-sm text-muted-foreground mb-2">
-                                                {campaign.description || campaign.message_template.slice(0, 60) + "..."}
-                                            </p>
-                                            <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-                                                <span className="flex items-center gap-1">
-                                                    <Calendar className="h-3 w-3" />
-                                                    {campaign.schedule_type}
-                                                </span>
-                                                <span className="flex items-center gap-1">
-                                                    <Send className="h-3 w-3" />
-                                                    {campaign.total_sent} sent
-                                                </span>
-                                                {campaign.last_run_at && (
-                                                    <span>Last run: {formatDate(campaign.last_run_at)}</span>
+                                            <div>
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <h3 className="font-semibold text-lg">{campaign.name}</h3>
+                                                    <Badge className={status.color}>{status.label}</Badge>
+                                                    <Badge variant="outline" className="text-xs">{type.label}</Badge>
+                                                </div>
+                                                <p className="text-sm text-muted-foreground">
+                                                    {campaign.description || 'ไม่มีคำอธิบาย'}
+                                                </p>
+                                                {campaign.coupons && (
+                                                    <Badge variant="secondary" className="mt-2">
+                                                        🎫 คูปอง: {campaign.coupons.code} ({campaign.coupons.discount_value}
+                                                        {campaign.coupons.discount_type === 'percentage' ? '%' : '฿'})
+                                                    </Badge>
                                                 )}
                                             </div>
                                         </div>
+                                        
+                                        <div className="flex items-center gap-2">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => toggleStatus(campaign)}
+                                            >
+                                                {campaign.status === "active" ? (
+                                                    <>
+                                                        <Pause className="h-4 w-4 mr-1" />
+                                                        หยุด
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Play className="h-4 w-4 mr-1" />
+                                                        เปิดใช้
+                                                    </>
+                                                )}
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                onClick={() => runCampaign(campaign.id)}
+                                                disabled={running === campaign.id}
+                                                className="bg-orange-500 hover:bg-orange-600"
+                                            >
+                                                {running === campaign.id ? (
+                                                    "กำลังส่ง..."
+                                                ) : (
+                                                    <>
+                                                        <Send className="h-4 w-4 mr-1" />
+                                                        รันทันที
+                                                    </>
+                                                )}
+                                            </Button>
+                                            <Button variant="outline" size="sm" asChild>
+                                                <Link href={`/admin/campaigns/${campaign.id}/edit`}>
+                                                    <Edit className="h-4 w-4 mr-1" />
+                                                    แก้ไข
+                                                </Link>
+                                            </Button>
+                                        </div>
                                     </div>
 
-                                    <div className="flex items-center gap-2">
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => toggleStatus(campaign)}
-                                        >
-                                            {campaign.status === "active" ? (
-                                                <>
-                                                    <Pause className="h-4 w-4 mr-1" />
-                                                    Pause
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <Play className="h-4 w-4 mr-1" />
-                                                    Activate
-                                                </>
-                                            )}
-                                        </Button>
-                                        <Button
-                                            size="sm"
-                                            onClick={() => runCampaign(campaign.id)}
-                                            disabled={running === campaign.id}
-                                        >
-                                            {running === campaign.id ? (
-                                                "Sending..."
-                                            ) : (
-                                                <>
-                                                    <Send className="h-4 w-4 mr-1" />
-                                                    Run Now
-                                                </>
-                                            )}
-                                        </Button>
+                                    {/* Stats Row */}
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-muted/30 rounded-lg mb-4">
+                                        <div className="text-center">
+                                            <p className="text-2xl font-bold text-foreground">{campaign.total_sent}</p>
+                                            <p className="text-xs text-muted-foreground">ส่งแล้ว</p>
+                                        </div>
+                                        <div className="text-center">
+                                            <p className="text-2xl font-bold text-blue-600">{campaign.total_opened}</p>
+                                            <p className="text-xs text-muted-foreground">เปิดอ่าน</p>
+                                        </div>
+                                        <div className="text-center">
+                                            <p className="text-2xl font-bold text-green-600">{campaign.total_clicked}</p>
+                                            <p className="text-xs text-muted-foreground">คลิก</p>
+                                        </div>
+                                        <div className="text-center">
+                                            <p className="text-2xl font-bold text-purple-600">{successRate}%</p>
+                                            <p className="text-xs text-muted-foreground">อัตราเปิดอ่าน</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Message Preview */}
+                                    <div className="mb-4">
+                                        <p className="text-xs font-medium text-muted-foreground mb-1">📝 ข้อความ:</p>
+                                        <div className="p-3 bg-gray-50 rounded-lg border text-sm whitespace-pre-wrap">
+                                            {campaign.message_template.slice(0, 150)}
+                                            {campaign.message_template.length > 150 && '...'}
+                                        </div>
+                                    </div>
+
+                                    {/* Bottom Row: Meta Info */}
+                                    <div className="flex flex-wrap gap-4 text-xs text-muted-foreground border-t pt-4">
+                                        <span className="flex items-center gap-1">
+                                            <Calendar className="h-3 w-3" />
+                                            ตั้งเวลา: {campaign.schedule_type === 'manual' ? 'ส่งเอง' : campaign.schedule_type}
+                                        </span>
+                                        <span className="flex items-center gap-1">
+                                            <Clock className="h-3 w-3" />
+                                            สร้างเมื่อ: {formatDate(campaign.created_at)}
+                                        </span>
+                                        {campaign.last_run_at && (
+                                            <span className="flex items-center gap-1">
+                                                <Send className="h-3 w-3" />
+                                                รันล่าสุด: {formatDate(campaign.last_run_at)}
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
                             </Card>

@@ -16,6 +16,9 @@ export async function GET(request: NextRequest) {
         if (error) throw error;
 
         const today = new Date();
+        // Reset to midnight for accurate day comparison
+        today.setHours(0, 0, 0, 0);
+
         const upcomingBirthdays: Array<{
             id: string;
             name: string;
@@ -29,12 +32,16 @@ export async function GET(request: NextRequest) {
             birthdayDate: string;
         }> = [];
 
+        // Debug info
+        const debugInfo: Array<{ name: string; birthday: string; calculatedDays: number; included: boolean }> = [];
+
         customers?.forEach((customer) => {
             if (!customer.birthday) return;
 
             const birthday = new Date(customer.birthday);
-            // Set birthday to this year
+            // Set birthday to this year for comparison
             birthday.setFullYear(today.getFullYear());
+            birthday.setHours(0, 0, 0, 0);
 
             // If birthday already passed this year, check next year
             if (birthday < today) {
@@ -42,7 +49,14 @@ export async function GET(request: NextRequest) {
             }
 
             const diffTime = birthday.getTime() - today.getTime();
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+            debugInfo.push({
+                name: customer.name || "Unknown",
+                birthday: customer.birthday,
+                calculatedDays: diffDays,
+                included: diffDays >= 0 && diffDays <= daysAhead
+            });
 
             if (diffDays >= 0 && diffDays <= daysAhead) {
                 upcomingBirthdays.push({
@@ -75,8 +89,10 @@ export async function GET(request: NextRequest) {
             success: true,
             count: upcomingBirthdays.length,
             daysAhead,
+            serverTime: today.toISOString(),
             customers: upcomingBirthdays,
             lineMessage,
+            debug: debugInfo,
         });
     } catch (error) {
         console.error("Birthday query error:", error);

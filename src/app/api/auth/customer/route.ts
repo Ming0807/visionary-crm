@@ -79,6 +79,8 @@ export async function POST(request: NextRequest) {
                 tier: customer.tier,
                 points: customer.points,
                 profileStatus,
+                birthday: customer.birthday,
+                address_json: customer.address_json,
             },
         });
     } catch (error) {

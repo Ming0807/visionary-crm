@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Users, Search, Filter, Download } from "lucide-react";
+import { Users, Search, Filter, Download, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase";
@@ -95,6 +95,7 @@ export default async function AdminCustomersPage() {
                 <TableHead>Total Spent</TableHead>
                 <TableHead>Orders</TableHead>
                 <TableHead>Joined</TableHead>
+                <TableHead className="text-center">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -103,7 +104,7 @@ export default async function AdminCustomersPage() {
                   <TableCell>
                     <Link
                       href={`/admin/customers/${customer.id}`}
-                      className="block w-full font-medium text-foreground hover:text-primary"
+                      className="block w-full font-medium text-foreground hover:text-primary hover:underline"
                     >
                       {customer.name || "Unknown"}
                     </Link>
@@ -153,6 +154,14 @@ export default async function AdminCustomersPage() {
                   <TableCell>
                     <Link href={`/admin/customers/${customer.id}`} className="text-muted-foreground text-sm">
                       {formatDate(customer.created_at)}
+                    </Link>
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <Link href={`/admin/customers/${customer.id}`}>
+                      <Button size="sm" variant="outline">
+                        <Eye className="h-4 w-4 mr-1" />
+                        ดูรายละเอียด
+                      </Button>
                     </Link>
                   </TableCell>
                 </TableRow>
