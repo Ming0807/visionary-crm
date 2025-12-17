@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
 
         const events = data.events || [];
 
-        // Allow verify requests (empty events array) to pass
+        // Allow verify requests (empty events array) to pass without signature check
         if (events.length === 0) {
             return NextResponse.json({ success: true });
         }
@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
         const isValidSignature = verifySignature(body, signature, channelSecret);
 
         if (!isValidSignature) {
-            console.error("Invalid LINE signature - body length:", body.length);
+            console.error("Invalid LINE signature");
             return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
         }
 
@@ -109,7 +109,19 @@ export async function POST(request: NextRequest) {
             const message = event.message;
             const replyToken = event.replyToken;
 
-            if (!userId) continue;
+            if (!userId || !message?.id) continue;
+
+            // IDEMPOTENCY CHECK: Skip if message already exists
+            const { data: existingMessage } = await supabase
+                .from("chat_logs")
+                .select("id")
+                .eq("platform_message_id", message.id)
+                .single();
+
+            if (existingMessage) {
+                console.log("Message already processed, skipping:", message.id);
+                continue;
+            }
 
             // 1. Get LINE Profile
             const profile = await getLineProfile(userId, accessToken);
@@ -142,7 +154,7 @@ export async function POST(request: NextRequest) {
                         .eq("social_user_id", userId);
                 } else {
                     // Create new customer
-                    const { data: newCustomer, error } = await supabase
+                    const { data: newCustomer } = await supabase
                         .from("customers")
                         .insert({
                             name: profile.displayName,
@@ -172,8 +184,8 @@ export async function POST(request: NextRequest) {
                 }
             }
 
-            // 3. Save chat log
-            await supabase
+            // 3. Save chat log (with platform_message_id for idempotency)
+            const { error: insertError } = await supabase
                 .from("chat_logs")
                 .insert({
                     customer_id: customerId,
@@ -185,6 +197,15 @@ export async function POST(request: NextRequest) {
                     reply_token: replyToken,
                     metadata: message,
                 });
+
+            if (insertError) {
+                // If duplicate key error, skip (another idempotency check)
+                if (insertError.code === "23505") {
+                    console.log("Duplicate message detected by DB constraint:", message.id);
+                    continue;
+                }
+                console.error("Error saving chat log:", insertError);
+            }
 
             // 4. Send auto-reply
             await replyMessage(
@@ -205,3 +226,4 @@ export async function POST(request: NextRequest) {
 export async function GET() {
     return NextResponse.json({ status: "ok" });
 }
+
