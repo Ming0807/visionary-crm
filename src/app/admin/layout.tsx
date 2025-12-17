@@ -21,6 +21,7 @@ import {
   X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { RealtimeProvider } from "@/components/RealtimeProvider";
 
 const sidebarLinks = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
@@ -180,7 +181,7 @@ export default function AdminLayout({
 
       {/* Main Content */}
       <main className="flex-1 bg-muted/30 lg:pt-0 pt-14 min-h-screen">
-        {children}
+        <RealtimeProvider>{children}</RealtimeProvider>
       </main>
     </div>
   );
