@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
                 rfm_score,
                 birthday,
                 created_at,
-                social_identities(id, provider, provider_user_id)
+                social_identities(id, platform, social_user_id)
             `, { count: "exact" });
 
         // Apply search filter
