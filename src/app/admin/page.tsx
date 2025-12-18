@@ -1,6 +1,24 @@
 import Link from "next/link";
-import { Package, ShoppingCart, Users, MessageSquare, FileText, BarChart3 } from "lucide-react";
-import AnalyticsCharts from "@/components/AnalyticsCharts";
+import dynamic from "next/dynamic";
+import { Package, ShoppingCart, Users, MessageSquare } from "lucide-react";
+import { ChartSkeleton, StatsGridSkeleton } from "@/components/ui/skeletons";
+
+// Lazy load heavy analytics component
+const AnalyticsCharts = dynamic(
+  () => import("@/components/AnalyticsCharts"),
+  {
+    loading: () => (
+      <div className="space-y-6">
+        <StatsGridSkeleton count={4} />
+        <div className="grid lg:grid-cols-2 gap-6">
+          <ChartSkeleton />
+          <ChartSkeleton />
+        </div>
+      </div>
+    ),
+    ssr: false,
+  }
+);
 
 export default function AdminDashboard() {
   return (
@@ -10,7 +28,7 @@ export default function AdminDashboard() {
         <p className="text-muted-foreground">ภาพรวมร้านค้าและ Analytics</p>
       </div>
 
-      {/* Analytics Charts */}
+      {/* Analytics Charts - Lazy Loaded */}
       <AnalyticsCharts />
 
       {/* Quick Actions */}
