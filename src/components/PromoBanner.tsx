@@ -100,49 +100,49 @@ export default function PromoBanner() {
 
     const TimeBlock = ({ value, label }: { value: number; label: string }) => (
         <div className="text-center">
-            <div className="bg-white/20 backdrop-blur-sm rounded-lg px-3 py-2 min-w-[60px]">
-                <span className="text-2xl lg:text-3xl font-bold text-white">
+            <div className="bg-white/20 backdrop-blur-sm rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 min-w-[44px] sm:min-w-[60px]">
+                <span className="text-lg sm:text-2xl lg:text-3xl font-bold text-white">
                     {mounted ? value.toString().padStart(2, "0") : "--"}
                 </span>
             </div>
-            <span className="text-xs text-white/80 mt-1 block">{label}</span>
+            <span className="text-[10px] sm:text-xs text-white/80 mt-0.5 sm:mt-1 block">{label}</span>
         </div>
     );
 
     return (
-        <section className="py-6 lg:py-8">
-            <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-primary via-orange-500 to-amber-500 p-6 lg:p-10">
+        <section className="py-4 sm:py-6 lg:py-8">
+            <div className="container mx-auto px-3 sm:px-6 lg:px-8">
+                <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-r from-primary via-orange-500 to-amber-500 p-4 sm:p-6 lg:p-10">
                     {/* Background Pattern */}
                     <div className="absolute inset-0 opacity-10">
-                        <div className="absolute top-0 right-0 w-96 h-96 bg-white rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-                        <div className="absolute bottom-0 left-0 w-64 h-64 bg-white rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
+                        <div className="absolute top-0 right-0 w-48 sm:w-96 h-48 sm:h-96 bg-white rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+                        <div className="absolute bottom-0 left-0 w-32 sm:w-64 h-32 sm:h-64 bg-white rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
                     </div>
 
-                    <div className="relative flex flex-col lg:flex-row items-center justify-between gap-6">
+                    <div className="relative flex flex-col items-center gap-4 sm:gap-6 lg:flex-row lg:justify-between">
                         {/* Left: Text */}
-                        <div className="text-center lg:text-left">
-                            <span className="inline-block px-3 py-1 rounded-full bg-white/20 text-white text-sm font-medium mb-3">
+                        <div className="text-center lg:text-left flex-shrink-0">
+                            <span className="inline-block px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full bg-white/20 text-white text-xs sm:text-sm font-medium mb-2 sm:mb-3 animate-pulse">
                                 {promo.title}
                             </span>
-                            <h2 className="text-2xl lg:text-4xl font-bold text-white mb-2">
+                            <h2 className="text-xl sm:text-2xl lg:text-4xl font-bold text-white mb-1 sm:mb-2">
                                 {promo.subtitle}
                             </h2>
-                            <p className="text-white/90 text-sm lg:text-base">
+                            <p className="text-white/90 text-xs sm:text-sm lg:text-base max-w-xs sm:max-w-none">
                                 แว่นตาแบรนด์ดังลดราคาเฉพาะช่วงนี้เท่านั้น!
                             </p>
                         </div>
 
                         {/* Center: Countdown */}
-                        <div className="flex items-center gap-2">
-                            <Clock className="h-5 w-5 text-white/80 hidden sm:block" />
-                            <div className="flex gap-2">
+                        <div className="flex items-center gap-1 sm:gap-2">
+                            <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-white/80 hidden sm:block" />
+                            <div className="flex gap-1 sm:gap-2 items-start">
                                 <TimeBlock value={timeLeft.days} label="วัน" />
-                                <span className="text-2xl text-white self-start mt-2">:</span>
+                                <span className="text-lg sm:text-2xl text-white mt-1.5 sm:mt-2">:</span>
                                 <TimeBlock value={timeLeft.hours} label="ชม." />
-                                <span className="text-2xl text-white self-start mt-2">:</span>
+                                <span className="text-lg sm:text-2xl text-white mt-1.5 sm:mt-2">:</span>
                                 <TimeBlock value={timeLeft.minutes} label="นาที" />
-                                <span className="text-2xl text-white self-start mt-2">:</span>
+                                <span className="text-lg sm:text-2xl text-white mt-1.5 sm:mt-2">:</span>
                                 <TimeBlock value={timeLeft.seconds} label="วินาที" />
                             </div>
                         </div>
@@ -150,11 +150,12 @@ export default function PromoBanner() {
                         {/* Right: CTA */}
                         <Button
                             size="lg"
-                            className="bg-white text-primary hover:bg-white/90 rounded-full px-8 font-semibold"
+                            className="w-full sm:w-auto bg-white text-primary hover:bg-white/90 rounded-full px-6 sm:px-8 font-semibold shadow-lg hover:shadow-xl transition-all"
                             asChild
                         >
                             <Link href="/products?sale=true">
-                                ช้อปเลย
+                                <span className="sm:hidden">ช้อปสินค้าลดราคา</span>
+                                <span className="hidden sm:inline">ช้อปเลย</span>
                                 <ArrowRight className="ml-2 h-4 w-4" />
                             </Link>
                         </Button>
