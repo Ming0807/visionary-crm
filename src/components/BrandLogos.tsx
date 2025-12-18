@@ -72,6 +72,7 @@ export default function BrandLogos() {
                     src={brand.logo}
                     alt={brand.name}
                     fill
+                    sizes="128px"
                     className="object-contain filter grayscale hover:grayscale-0 transition-all"
                   />
                 </div>
