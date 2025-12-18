@@ -123,8 +123,24 @@ export default function AdminSettingsPage() {
         if (results[0]?.value) setStore({ ...defaultStore, ...results[0].value });
         if (results[1]?.value) setHero({ ...defaultHero, ...results[1].value });
         if (results[2]?.value) setPromo(prev => ({ ...prev, ...results[2].value }));
-        if (results[3]?.value && Array.isArray(results[3].value)) setCategories(results[3].value);
-        if (results[4]?.value && Array.isArray(results[4].value)) setBrands(results[4].value);
+        
+        // Ensure categories have unique IDs
+        if (results[3]?.value && Array.isArray(results[3].value)) {
+          const catsWithUniqueIds = results[3].value.map((cat: CategoryItem, index: number) => ({
+            ...cat,
+            id: cat.id || `cat-${Date.now()}-${index}`,
+          }));
+          setCategories(catsWithUniqueIds);
+        }
+        
+        // Ensure brands have unique IDs
+        if (results[4]?.value && Array.isArray(results[4].value)) {
+          const brandsWithUniqueIds = results[4].value.map((brand: BrandItem, index: number) => ({
+            ...brand,
+            id: brand.id || `brand-${Date.now()}-${index}`,
+          }));
+          setBrands(brandsWithUniqueIds);
+        }
       } catch (error) {
         console.error("Failed to fetch settings:", error);
       } finally {
@@ -189,78 +205,105 @@ export default function AdminSettingsPage() {
   ] as const;
 
   return (
-    <div className="p-6 lg:p-8 max-w-5xl">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <Settings className="h-6 w-6" /> จัดการหน้าเว็บ
+    <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto">
+      {/* Page Header */}
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-xl sm:text-2xl font-bold text-foreground flex items-center gap-2">
+          <Settings className="h-5 w-5 sm:h-6 sm:w-6" /> จัดการหน้าเว็บ
         </h1>
-        <p className="text-muted-foreground">แก้ไข content, รูปภาพ และการตั้งค่าร้านค้า</p>
+        <p className="text-sm sm:text-base text-muted-foreground mt-1">
+          แก้ไข content, รูปภาพ และการตั้งค่าร้านค้า
+        </p>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-        {tabs.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-              activeTab === tab.id ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/80"
-            }`}
-          >
-            <tab.icon className="h-4 w-4" />
-            {tab.label}
-          </button>
-        ))}
+      {/* Tabs - Scrollable on mobile, sticky */}
+      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-3 mb-6 border-b border-border/50">
+        <div className="flex gap-1.5 sm:gap-2 overflow-x-auto scrollbar-hide">
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${
+                activeTab === tab.id 
+                  ? "bg-primary text-primary-foreground shadow-sm" 
+                  : "bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <tab.icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden xs:inline sm:inline">{tab.label}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* =============== STORE CONFIG TAB =============== */}
       {activeTab === "store" && (
-        <Card className="p-6">
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2"><Store className="h-5 w-5" /> Store Configuration</h2>
+        <Card className="p-4 sm:p-6">
+          <h2 className="text-base sm:text-lg font-semibold mb-4 flex items-center gap-2">
+            <Store className="h-4 w-4 sm:h-5 sm:w-5" /> Store Configuration
+          </h2>
           
-          <div className="grid lg:grid-cols-2 gap-6">
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Left Column - Basic Info */}
             <div className="space-y-4">
-              <div>
-                <Label>Site Name</Label>
-                <Input value={store.siteName} onChange={(e) => setStore({ ...store, siteName: e.target.value })} />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-xs sm:text-sm">Site Name</Label>
+                  <Input value={store.siteName} onChange={(e) => setStore({ ...store, siteName: e.target.value })} className="mt-1" />
+                </div>
+                <div>
+                  <Label className="text-xs sm:text-sm">LINE ID</Label>
+                  <Input value={store.lineId} onChange={(e) => setStore({ ...store, lineId: e.target.value })} className="mt-1" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-xs sm:text-sm">Email</Label>
+                  <Input value={store.email} onChange={(e) => setStore({ ...store, email: e.target.value })} className="mt-1" />
+                </div>
+                <div>
+                  <Label className="text-xs sm:text-sm">Phone</Label>
+                  <Input value={store.phone} onChange={(e) => setStore({ ...store, phone: e.target.value })} className="mt-1" />
+                </div>
               </div>
               <div>
-                <Label>Email</Label>
-                <Input value={store.email} onChange={(e) => setStore({ ...store, email: e.target.value })} />
+                <Label className="text-xs sm:text-sm">Free Shipping Threshold (฿)</Label>
+                <Input type="number" value={store.freeShippingThreshold} onChange={(e) => setStore({ ...store, freeShippingThreshold: Number(e.target.value) })} className="mt-1" />
               </div>
               <div>
-                <Label>Phone</Label>
-                <Input value={store.phone} onChange={(e) => setStore({ ...store, phone: e.target.value })} />
-              </div>
-              <div>
-                <Label>LINE ID</Label>
-                <Input value={store.lineId} onChange={(e) => setStore({ ...store, lineId: e.target.value })} />
-              </div>
-              <div>
-                <Label>Free Shipping Threshold (฿)</Label>
-                <Input type="number" value={store.freeShippingThreshold} onChange={(e) => setStore({ ...store, freeShippingThreshold: Number(e.target.value) })} />
-              </div>
-              <div>
-                <Label>Address</Label>
-                <Textarea value={store.address} onChange={(e) => setStore({ ...store, address: e.target.value })} rows={2} />
+                <Label className="text-xs sm:text-sm">Address</Label>
+                <Textarea value={store.address} onChange={(e) => setStore({ ...store, address: e.target.value })} rows={2} className="mt-1" />
               </div>
             </div>
 
-            <div className="space-y-4">
-              <div>
-                <Label>Site Logo</Label>
-                <ImageUploader images={store.logo ? [store.logo] : []} onChange={(imgs) => setStore({ ...store, logo: imgs[0] || "" })} maxImages={1} type="logo" />
-                {store.logo && <img src={store.logo} alt="Logo" className="mt-2 h-16 object-contain" />}
+            {/* Right Column - Images */}
+            <div className="space-y-6">
+              <div className="p-4 bg-muted/30 rounded-xl">
+                <Label className="text-xs sm:text-sm font-medium">Site Logo</Label>
+                <div className="mt-2">
+                  <ImageUploader images={store.logo ? [store.logo] : []} onChange={(imgs) => setStore({ ...store, logo: imgs[0] || "" })} maxImages={1} type="logo" />
+                </div>
+                {store.logo && (
+                  <div className="mt-3 p-3 bg-background rounded-lg border">
+                    <img src={store.logo} alt="Logo" className="h-12 sm:h-16 object-contain" />
+                  </div>
+                )}
               </div>
-              <div>
-                <Label>Favicon</Label>
-                <ImageUploader images={store.favicon ? [store.favicon] : []} onChange={(imgs) => setStore({ ...store, favicon: imgs[0] || "" })} maxImages={1} type="favicon" />
-                {store.favicon && <img src={store.favicon} alt="Favicon" className="mt-2 h-8 w-8 object-contain" />}
+              <div className="p-4 bg-muted/30 rounded-xl">
+                <Label className="text-xs sm:text-sm font-medium">Favicon</Label>
+                <div className="mt-2">
+                  <ImageUploader images={store.favicon ? [store.favicon] : []} onChange={(imgs) => setStore({ ...store, favicon: imgs[0] || "" })} maxImages={1} type="favicon" />
+                </div>
+                {store.favicon && (
+                  <div className="mt-3 p-3 bg-background rounded-lg border inline-flex">
+                    <img src={store.favicon} alt="Favicon" className="h-8 w-8 object-contain" />
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
-          <Button onClick={() => saveSettings("store_config", store, "Store Config")} disabled={saving === "store_config"} className="mt-6">
+          <Button onClick={() => saveSettings("store_config", store, "Store Config")} disabled={saving === "store_config"} className="mt-6 w-full sm:w-auto">
             {saving === "store_config" ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
             บันทึก Store Config
           </Button>
@@ -324,55 +367,87 @@ export default function AdminSettingsPage() {
 
       {/* =============== CATEGORIES TAB =============== */}
       {activeTab === "categories" && (
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold flex items-center gap-2"><Grid3X3 className="h-5 w-5" /> Categories</h2>
-            <Button variant="outline" size="sm" onClick={addCategory}><Plus className="h-4 w-4 mr-1" /> เพิ่มหมวดหมู่</Button>
+        <Card className="p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2">
+              <Grid3X3 className="h-4 w-4 sm:h-5 sm:w-5" /> Categories
+            </h2>
+            <Button variant="outline" size="sm" onClick={addCategory} className="w-full sm:w-auto">
+              <Plus className="h-4 w-4 mr-1" /> เพิ่มหมวดหมู่
+            </Button>
           </div>
 
-          <div className="space-y-4">
-            {categories.map((cat) => (
-              <div key={cat.id} className="p-4 border rounded-lg bg-muted/30">
-                <div className="grid md:grid-cols-4 gap-4">
-                  <div className="space-y-3">
-                    <div><Label className="text-xs">ชื่อที่แสดง</Label><Input value={cat.name} onChange={(e) => updateCategory(cat.id, "name", e.target.value)} /></div>
-                    <div><Label className="text-xs">คำอธิบาย</Label><Input value={cat.description} onChange={(e) => updateCategory(cat.id, "description", e.target.value)} /></div>
-                  </div>
-                  <div className="space-y-3">
+          <div className="space-y-3">
+            {categories.map((cat, index) => (
+              <div key={`cat-${cat.id || index}`} className="p-3 sm:p-4 border rounded-xl bg-muted/20 hover:bg-muted/40 transition-colors">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                  {/* Name & Description */}
+                  <div className="space-y-2">
                     <div>
-                      <Label className="text-xs">หมวดหมู่ในระบบ (Auto Link)</Label>
+                      <Label className="text-xs text-muted-foreground">ชื่อที่แสดง</Label>
+                      <Input value={cat.name || ""} onChange={(e) => updateCategory(cat.id, "name", e.target.value)} className="mt-1 h-9" />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">คำอธิบาย</Label>
+                      <Input value={cat.description || ""} onChange={(e) => updateCategory(cat.id, "description", e.target.value)} className="mt-1 h-9" />
+                    </div>
+                  </div>
+                  
+                  {/* Category & Size */}
+                  <div className="space-y-2">
+                    <div>
+                      <Label className="text-xs text-muted-foreground">หมวดหมู่ในระบบ</Label>
                       <select
-                        value={cat.dbCategory}
+                        value={cat.dbCategory || "Sunglasses"}
                         onChange={(e) => updateCategory(cat.id, "dbCategory", e.target.value)}
-                        className="w-full px-3 py-2 border rounded-md text-sm bg-background"
+                        className="w-full mt-1 px-3 py-2 h-9 border rounded-md text-sm bg-background"
                       >
                         {dbCategories.map(c => <option key={c} value={c}>{c}</option>)}
                       </select>
-                      <p className="text-xs text-muted-foreground mt-1">Link: /products?category={cat.dbCategory}</p>
                     </div>
                     <div>
-                      <Label className="text-xs">Size</Label>
-                      <select value={cat.size} onChange={(e) => updateCategory(cat.id, "size", e.target.value)} className="w-full px-3 py-2 border rounded-md text-sm bg-background">
-                        <option value="large">Large (2x2)</option>
-                        <option value="medium">Medium (2x1)</option>
-                        <option value="small">Small (1x1)</option>
+                      <Label className="text-xs text-muted-foreground">Size</Label>
+                      <select value={cat.size || "small"} onChange={(e) => updateCategory(cat.id, "size", e.target.value)} className="w-full mt-1 px-3 py-2 h-9 border rounded-md text-sm bg-background">
+                        <option key="large" value="large">Large (2x2)</option>
+                        <option key="medium" value="medium">Medium (2x1)</option>
+                        <option key="small" value="small">Small (1x1)</option>
                       </select>
                     </div>
                   </div>
-                  <div className="md:col-span-2">
-                    <Label className="text-xs">รูปภาพ</Label>
-                    <ImageUploader images={cat.image ? [cat.image] : []} onChange={(imgs) => updateCategory(cat.id, "image", imgs[0] || "")} maxImages={1} type="category" />
-                    {cat.image && <div className="mt-2 h-24 rounded-lg overflow-hidden bg-muted"><img src={cat.image} alt={cat.name} className="w-full h-full object-cover" /></div>}
+                  
+                  {/* Image Upload */}
+                  <div className="sm:col-span-2 lg:col-span-2">
+                    <Label className="text-xs text-muted-foreground">รูปภาพ</Label>
+                    <div className="mt-1 flex gap-3">
+                      <div className="flex-1">
+                        <ImageUploader images={cat.image ? [cat.image] : []} onChange={(imgs) => updateCategory(cat.id, "image", imgs[0] || "")} maxImages={1} type="category" />
+                      </div>
+                      {cat.image && (
+                        <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden bg-muted flex-shrink-0">
+                          <img src={cat.image} alt={cat.name} className="w-full h-full object-cover" />
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => categories.length > 1 && setCategories(prev => prev.filter(c => c.id !== cat.id))} className="mt-2 text-destructive hover:text-destructive" disabled={categories.length <= 1}>
-                  <Trash2 className="h-4 w-4 mr-1" /> ลบ
-                </Button>
+                
+                {/* Delete Button */}
+                <div className="mt-3 pt-3 border-t border-border/50 flex justify-end">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => categories.length > 1 && setCategories(prev => prev.filter(c => c.id !== cat.id))} 
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 px-3"
+                    disabled={categories.length <= 1}
+                  >
+                    <Trash2 className="h-3.5 w-3.5 mr-1" /> ลบหมวดหมู่
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
 
-          <Button onClick={() => saveSettings("categories", categories, "Categories")} disabled={saving === "categories"} className="mt-6">
+          <Button onClick={() => saveSettings("categories", categories, "Categories")} disabled={saving === "categories"} className="mt-6 w-full sm:w-auto">
             {saving === "categories" ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
             บันทึก Categories
           </Button>
@@ -381,31 +456,61 @@ export default function AdminSettingsPage() {
 
       {/* =============== BRANDS TAB =============== */}
       {activeTab === "brands" && (
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold flex items-center gap-2"><Building2 className="h-5 w-5" /> Brand Logos</h2>
-            <Button variant="outline" size="sm" onClick={addBrand}><Plus className="h-4 w-4 mr-1" /> เพิ่มแบรนด์</Button>
+        <Card className="p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2">
+              <Building2 className="h-4 w-4 sm:h-5 sm:w-5" /> Brand Logos
+            </h2>
+            <Button variant="outline" size="sm" onClick={addBrand} className="w-full sm:w-auto">
+              <Plus className="h-4 w-4 mr-1" /> เพิ่มแบรนด์
+            </Button>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {brands.map((brand) => (
-              <div key={brand.id} className="p-4 border rounded-lg bg-muted/30">
-                <div className="space-y-3">
-                  <div><Label className="text-xs">ชื่อแบรนด์</Label><Input value={brand.name} onChange={(e) => updateBrand(brand.id, "name", e.target.value)} placeholder="Ray-Ban" /></div>
-                  <div>
-                    <Label className="text-xs">Logo</Label>
-                    <ImageUploader images={brand.logo ? [brand.logo] : []} onChange={(imgs) => updateBrand(brand.id, "logo", imgs[0] || "")} maxImages={1} type="brand" />
-                    {brand.logo && <img src={brand.logo} alt={brand.name} className="mt-2 h-12 object-contain" />}
-                  </div>
-                  <Button variant="ghost" size="sm" onClick={() => brands.length > 1 && setBrands(prev => prev.filter(b => b.id !== brand.id))} className="text-destructive hover:text-destructive" disabled={brands.length <= 1}>
-                    <Trash2 className="h-4 w-4 mr-1" /> ลบ
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            {brands.map((brand, index) => (
+              <div key={`brand-${brand.id || index}`} className="p-3 border rounded-xl bg-muted/20 hover:bg-muted/40 transition-colors group">
+                {/* Logo Preview */}
+                <div className="aspect-[3/2] mb-3 bg-background rounded-lg border flex items-center justify-center overflow-hidden">
+                  {brand.logo ? (
+                    <img src={brand.logo} alt={brand.name} className="w-full h-full object-contain p-2" />
+                  ) : (
+                    <div className="text-muted-foreground/40 text-xs text-center px-2">No Logo</div>
+                  )}
+                </div>
+                
+                {/* Brand Name Input */}
+                <div className="mb-2">
+                  <Input 
+                    value={brand.name || ""} 
+                    onChange={(e) => updateBrand(brand.id, "name", e.target.value)} 
+                    placeholder="Brand Name" 
+                    className="h-8 text-sm"
+                  />
+                </div>
+                
+                {/* Upload & Delete */}
+                <div className="space-y-2">
+                  <ImageUploader 
+                    images={brand.logo ? [brand.logo] : []} 
+                    onChange={(imgs) => updateBrand(brand.id, "logo", imgs[0] || "")} 
+                    maxImages={1} 
+                    type="brand" 
+                  />
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => brands.length > 1 && setBrands(prev => prev.filter(b => b.id !== brand.id))} 
+                    className="w-full text-destructive hover:text-destructive hover:bg-destructive/10 h-7 text-xs"
+                    disabled={brands.length <= 1}
+                  >
+                    <Trash2 className="h-3 w-3 mr-1" /> ลบ
                   </Button>
                 </div>
               </div>
             ))}
           </div>
 
-          <Button onClick={() => saveSettings("brand_logos", brands, "Brand Logos")} disabled={saving === "brand_logos"} className="mt-6">
+          <Button onClick={() => saveSettings("brand_logos", brands, "Brand Logos")} disabled={saving === "brand_logos"} className="mt-6 w-full sm:w-auto">
             {saving === "brand_logos" ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
             บันทึก Brands
           </Button>

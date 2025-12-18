@@ -29,11 +29,15 @@ export default function BrandLogos() {
         
         if (data?.value && Array.isArray(data.value) && data.value.length > 0) {
           // Handle both old format (array of strings) and new format (array of objects)
+          // Always generate unique IDs to prevent key conflicts
           const brandData = data.value.map((item: string | BrandItem, index: number) => {
             if (typeof item === "string") {
-              return { id: `brand-${index}`, name: item, logo: "" };
+              return { id: `brand-${Date.now()}-${index}`, name: item, logo: "" };
             }
-            return item;
+            return { 
+              ...item, 
+              id: item.id || `brand-${Date.now()}-${index}` 
+            };
           });
           setBrands(brandData);
         }
@@ -57,9 +61,9 @@ export default function BrandLogos() {
         </div>
         
         <div className="flex flex-wrap items-center justify-center gap-8 lg:gap-12">
-          {brands.map((brand) => (
+          {brands.map((brand, index) => (
             <div
-              key={brand.id}
+              key={`${brand.id}-${index}`}
               className="flex items-center justify-center transition-all hover:scale-105"
             >
               {brand.logo ? (

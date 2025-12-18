@@ -89,13 +89,14 @@ export default function ImageUploader({
                 <div className="grid grid-cols-3 md:grid-cols-5 gap-3">
                     {images.map((url, index) => (
                         <div
-                            key={index}
+                            key={`img-${url}-${index}`}
                             className="relative aspect-square rounded-xl overflow-hidden bg-muted group"
                         >
                             <Image
                                 src={url}
                                 alt={`Image ${index + 1}`}
                                 fill
+                                sizes="(max-width: 768px) 33vw, 20vw"
                                 className="object-cover"
                             />
                             <button
