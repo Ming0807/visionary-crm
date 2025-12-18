@@ -30,17 +30,17 @@ export default async function FeaturedProducts() {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-12">
           <div>
             <h2 className="text-3xl lg:text-4xl font-bold text-foreground mb-2">
-              Featured Products
+              สินค้าแนะนำ
             </h2>
             <p className="text-muted-foreground">
-              Handpicked favorites from our collection
+              คัดสรรมาจากคอลเลกชันของเรา
             </p>
           </div>
           <a
             href="/products"
             className="text-primary hover:text-primary/80 font-medium inline-flex items-center transition-colors"
           >
-            View All
+            ดูทั้งหมด
             <svg className="ml-2 w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
@@ -57,7 +57,7 @@ export default async function FeaturedProducts() {
         ) : (
           <div className="text-center py-12">
             <p className="text-muted-foreground">
-              No products available yet. Check back soon!
+              ยังไม่มีสินค้า กลับมาดูใหม่เร็วๆ นี้!
             </p>
           </div>
         )}

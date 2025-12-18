@@ -6,32 +6,32 @@ import Link from "next/link";
 const categories = [
   {
     id: "sunglasses",
-    name: "Sunglasses",
-    description: "Protect your eyes in style",
+    name: "แว่นกันแดด",
+    description: "ปกป้องดวงตาด้วยสไตล์",
     image: "https://images.unsplash.com/photo-1572635196237-14b3f281503f?auto=format&fit=crop&w=600&q=80",
     href: "/products?category=Sunglasses",
     size: "large",
   },
   {
     id: "frames",
-    name: "Eyeglasses",
-    description: "Everyday elegance",
+    name: "แว่นสายตา",
+    description: "สวยทุกวัน",
     image: "https://images.unsplash.com/photo-1574258495973-f010dfbb5371?auto=format&fit=crop&w=400&q=80",
     href: "/products?category=Eyeglasses",
     size: "small",
   },
   {
     id: "lenses",
-    name: "Lenses",
-    description: "Crystal clear vision",
+    name: "เลนส์",
+    description: "มองชัดสบายตา",
     image: "https://images.unsplash.com/photo-1516714819001-8ee7a13b71d7?auto=format&fit=crop&w=400&q=80",
     href: "/products?category=Lenses",
     size: "small",
   },
   {
     id: "accessories",
-    name: "Accessories",
-    description: "Complete your look",
+    name: "อุปกรณ์เสริม",
+    description: "เติมเต็มลุค",
     image: "https://images.unsplash.com/photo-1473496169904-658ba7c44d8a?auto=format&fit=crop&w=400&q=80",
     href: "/products?category=Accessories",
     size: "medium",
@@ -45,10 +45,10 @@ export default function CategoryGrid() {
         {/* Section Header */}
         <div className="text-center mb-12">
           <h2 className="text-3xl lg:text-4xl font-bold text-foreground mb-4">
-            Shop by Category
+            เลือกซื้อตามหมวดหมู่
           </h2>
           <p className="text-muted-foreground max-w-2xl mx-auto">
-            Explore our curated collection of premium eyewear for every occasion
+            คอลเลกชันแว่นตาพรีเมียมสำหรับทุกโอกาส
           </p>
         </div>
 

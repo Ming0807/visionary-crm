@@ -41,19 +41,35 @@ export default function CheckoutPage() {
       try {
         const { data } = await supabase
           .from("customers")
-          .select("name, phone, email, address_json")
+          .select("name, phone, email, address, address_json")
           .eq("id", customer.id)
           .single();
 
         if (data) {
+          // Parse address from different possible formats
+          const addressJson = data.address_json || {};
+          const legacyAddress = typeof data.address === 'object' ? data.address : {};
+          
+          // Try multiple field names for address
+          const addressFull = addressJson.full || addressJson.line1 || addressJson.address || 
+                             legacyAddress.full || legacyAddress.line1 || legacyAddress.address || "";
+          
+          // Try multiple field names for city
+          const city = addressJson.city || addressJson.province || 
+                      legacyAddress.city || legacyAddress.province || "";
+          
+          // Try multiple field names for postal code
+          const postalCode = addressJson.zip || addressJson.postal_code || addressJson.postalCode ||
+                            legacyAddress.zip || legacyAddress.postal_code || legacyAddress.postalCode || "";
+
           setFormData((prev) => ({
             ...prev,
             name: data.name || profile?.displayName || prev.name,
             phone: data.phone || prev.phone,
             email: data.email || prev.email,
-            address: data.address_json?.full || data.address_json?.line1 || prev.address,
-            city: data.address_json?.city || prev.city,
-            postalCode: data.address_json?.zip || data.address_json?.postal_code || prev.postalCode,
+            address: addressFull || prev.address,
+            city: city || prev.city,
+            postalCode: postalCode || prev.postalCode,
           }));
         }
       } catch (error) {

@@ -12,43 +12,59 @@ interface TimeLeft {
     seconds: number;
 }
 
-export default function PromoBanner() {
-    // Set end date to 7 days from now
+// Fixed end date - set it to a specific date or calculate on client only
+const getEndDate = () => {
     const endDate = new Date();
     endDate.setDate(endDate.getDate() + 7);
     endDate.setHours(23, 59, 59, 999);
+    return endDate;
+};
 
-    const calculateTimeLeft = (): TimeLeft => {
-        const difference = +endDate - +new Date();
-        
-        if (difference <= 0) {
-            return { days: 0, hours: 0, minutes: 0, seconds: 0 };
-        }
-
-        return {
-            days: Math.floor(difference / (1000 * 60 * 60 * 24)),
-            hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
-            minutes: Math.floor((difference / 1000 / 60) % 60),
-            seconds: Math.floor((difference / 1000) % 60),
-        };
-    };
-
-    const [timeLeft, setTimeLeft] = useState<TimeLeft>(calculateTimeLeft());
+export default function PromoBanner() {
+    // Start with zeros to avoid hydration mismatch
+    const [timeLeft, setTimeLeft] = useState<TimeLeft>({
+        days: 0,
+        hours: 0,
+        minutes: 0,
+        seconds: 0,
+    });
+    const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
+        setMounted(true);
+        const endDate = getEndDate();
+
+        const calculateTimeLeft = (): TimeLeft => {
+            const difference = +endDate - +new Date();
+            
+            if (difference <= 0) {
+                return { days: 0, hours: 0, minutes: 0, seconds: 0 };
+            }
+
+            return {
+                days: Math.floor(difference / (1000 * 60 * 60 * 24)),
+                hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
+                minutes: Math.floor((difference / 1000 / 60) % 60),
+                seconds: Math.floor((difference / 1000) % 60),
+            };
+        };
+
+        // Initial calculation
+        setTimeLeft(calculateTimeLeft());
+
+        // Update every second
         const timer = setInterval(() => {
             setTimeLeft(calculateTimeLeft());
         }, 1000);
 
         return () => clearInterval(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const TimeBlock = ({ value, label }: { value: number; label: string }) => (
         <div className="text-center">
             <div className="bg-white/20 backdrop-blur-sm rounded-lg px-3 py-2 min-w-[60px]">
                 <span className="text-2xl lg:text-3xl font-bold text-white">
-                    {value.toString().padStart(2, "0")}
+                    {mounted ? value.toString().padStart(2, "0") : "--"}
                 </span>
             </div>
             <span className="text-xs text-white/80 mt-1 block">{label}</span>

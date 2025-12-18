@@ -14,15 +14,15 @@ export default function HeroSection() {
           <div className="space-y-6 lg:space-y-8 text-center lg:text-left animate-fade-in">
             <div className="space-y-4">
               <span className="inline-block px-4 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium">
-                New Collection 2024
+                คอลเลกชันใหม่ 2024
               </span>
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-foreground">
-                Discover Your
-                <span className="block text-primary">Perfect Vision</span>
+                ค้นหาแว่นตา
+                <span className="block text-primary">ที่ใช่คุณ</span>
               </h1>
               <p className="text-lg text-muted-foreground max-w-md mx-auto lg:mx-0">
-                Premium eyewear crafted for those who see the world differently. 
-                Find your signature style today.
+                แว่นตาพรีเมียม สำหรับคนที่มองโลกต่างออกไป 
+                ค้นหาสไตล์ของคุณวันนี้
               </p>
             </div>
 
@@ -33,7 +33,7 @@ export default function HeroSection() {
                 asChild
               >
                 <Link href="/products">
-                  Explore Collection
+                  เลือกชมคอลเลกชัน
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
@@ -44,7 +44,7 @@ export default function HeroSection() {
                 asChild
               >
                 <Link href="/about">
-                  Our Story
+                  เกี่ยวกับเรา
                 </Link>
               </Button>
             </div>
@@ -53,17 +53,17 @@ export default function HeroSection() {
             <div className="flex items-center justify-center lg:justify-start gap-8 pt-4">
               <div>
                 <p className="text-3xl font-bold text-foreground">500+</p>
-                <p className="text-sm text-muted-foreground">Premium Styles</p>
+                <p className="text-sm text-muted-foreground">สไตล์พรีเมียม</p>
               </div>
               <div className="w-px h-12 bg-border" />
               <div>
                 <p className="text-3xl font-bold text-foreground">50K+</p>
-                <p className="text-sm text-muted-foreground">Happy Customers</p>
+                <p className="text-sm text-muted-foreground">ลูกค้าพึงพอใจ</p>
               </div>
               <div className="w-px h-12 bg-border" />
               <div>
                 <p className="text-3xl font-bold text-foreground">5★</p>
-                <p className="text-sm text-muted-foreground">Top Rated</p>
+                <p className="text-sm text-muted-foreground">คะแนนสูงสุด</p>
               </div>
             </div>
           </div>
@@ -90,8 +90,8 @@ export default function HeroSection() {
                     <span className="text-2xl">👓</span>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-foreground">Free Shipping</p>
-                    <p className="text-xs text-muted-foreground">On orders over ฿1,500</p>
+                    <p className="text-sm font-medium text-foreground">ส่งฟรี</p>
+                    <p className="text-xs text-muted-foreground">เมื่อซื้อครบ ฿1,500</p>
                   </div>
                 </div>
               </div>

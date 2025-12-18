@@ -2,13 +2,24 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Package, ChevronRight, Loader2, ArrowLeft } from "lucide-react";
+import { Package, ChevronRight, Loader2, ArrowLeft, Star, Truck, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
+
+interface OrderItem {
+    id: string;
+    product_name_snapshot: string;
+    quantity: number;
+    unit_price: number;
+    variant: {
+        images: string[];
+    } | null;
+}
 
 interface Order {
     id: string;
@@ -16,7 +27,9 @@ interface Order {
     total_amount: number;
     payment_status: string;
     fulfillment_status: string;
+    tracking_number: string | null;
     created_at: string;
+    items: OrderItem[];
 }
 
 export default function OrdersPage() {
@@ -37,11 +50,31 @@ export default function OrdersPage() {
             
             const { data } = await supabase
                 .from("orders")
-                .select("id, order_number, total_amount, payment_status, fulfillment_status, created_at")
+                .select(`
+                    id, 
+                    order_number, 
+                    total_amount, 
+                    payment_status, 
+                    fulfillment_status, 
+                    tracking_number,
+                    created_at
+                `)
                 .eq("customer_id", customer.id)
                 .order("created_at", { ascending: false });
-
-            if (data) setOrders(data);
+            
+            if (data) {
+                // Fetch items separately to avoid query issues
+                const ordersWithItems = await Promise.all(
+                    data.map(async (order) => {
+                        const { data: items } = await supabase
+                            .from("order_items")
+                            .select("id, product_name_snapshot, quantity, price_per_unit")
+                            .eq("order_id", order.id);
+                        return { ...order, items: items || [] };
+                    })
+                );
+                setOrders(ordersWithItems as unknown as Order[]);
+            }
             setLoadingOrders(false);
         };
 
@@ -70,6 +103,20 @@ export default function OrdersPage() {
         return colors[status] || "bg-gray-100 text-gray-700";
     };
 
+    const getStatusLabel = (status: string) => {
+        const labels: Record<string, string> = {
+            delivered: "จัดส่งแล้ว",
+            shipped: "กำลังจัดส่ง",
+            packing: "กำลังแพ็ค",
+            unfulfilled: "รอดำเนินการ",
+            paid: "ชำระแล้ว",
+            pending: "รอชำระ",
+            verifying: "รอตรวจสอบ",
+            failed: "ล้มเหลว",
+        };
+        return labels[status] || status;
+    };
+
     if (isLoading || loadingOrders) {
         return (
             <div className="min-h-screen flex items-center justify-center">
@@ -90,33 +137,103 @@ export default function OrdersPage() {
             {orders.length > 0 ? (
                 <div className="space-y-4">
                     {orders.map((order) => (
-                        <Card key={order.id} className="p-4">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="font-mono font-medium">{order.order_number}</p>
-                                    <p className="text-sm text-muted-foreground">
-                                        {new Date(order.created_at).toLocaleDateString("th-TH", {
-                                            year: "numeric",
-                                            month: "short",
-                                            day: "numeric",
-                                        })}
-                                    </p>
+                        <Link key={order.id} href={`/account/orders/${order.id}`}>
+                            <Card className="p-4 hover:shadow-md transition-shadow cursor-pointer">
+                                {/* Header */}
+                                <div className="flex items-center justify-between mb-3">
+                                    <div>
+                                        <p className="font-mono font-medium text-lg">{order.order_number}</p>
+                                        <p className="text-sm text-muted-foreground">
+                                            {new Date(order.created_at).toLocaleDateString("th-TH", {
+                                                year: "numeric",
+                                                month: "long",
+                                                day: "numeric",
+                                            })}
+                                        </p>
+                                    </div>
+                                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
                                 </div>
-                                <div className="text-right">
-                                    <p className="font-semibold text-primary">
+
+                                {/* Product Images Preview */}
+                                {order.items && order.items.length > 0 && (
+                                    <div className="flex gap-2 mb-3 overflow-x-auto">
+                                        {order.items.slice(0, 4).map((item, idx) => (
+                                            <div key={item.id || idx} className="w-14 h-14 rounded-lg bg-muted flex-shrink-0 overflow-hidden">
+                                                {item.variant?.images?.[0] ? (
+                                                    <Image
+                                                        src={item.variant.images[0]}
+                                                        alt=""
+                                                        width={56}
+                                                        height={56}
+                                                        className="object-cover w-full h-full"
+                                                    />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center">
+                                                        <Package className="h-5 w-5 text-muted-foreground" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                        {order.items.length > 4 && (
+                                            <div className="w-14 h-14 rounded-lg bg-muted flex-shrink-0 flex items-center justify-center">
+                                                <span className="text-sm text-muted-foreground">+{order.items.length - 4}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Status Row */}
+                                <div className="flex items-center justify-between">
+                                    <div className="flex gap-2">
+                                        <div className="flex items-center gap-1">
+                                            <CreditCard className="h-3.5 w-3.5 text-muted-foreground" />
+                                            <Badge className={`${getStatusColor(order.payment_status)} text-xs`}>
+                                                {getStatusLabel(order.payment_status)}
+                                            </Badge>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                            <Truck className="h-3.5 w-3.5 text-muted-foreground" />
+                                            <Badge className={`${getStatusColor(order.fulfillment_status)} text-xs`}>
+                                                {getStatusLabel(order.fulfillment_status)}
+                                            </Badge>
+                                        </div>
+                                    </div>
+                                    <p className="font-semibold text-primary text-lg">
                                         {formatPrice(order.total_amount)}
                                     </p>
-                                    <div className="flex gap-2 mt-1">
-                                        <Badge className={getStatusColor(order.payment_status)}>
-                                            {order.payment_status}
-                                        </Badge>
-                                        <Badge className={getStatusColor(order.fulfillment_status)}>
-                                            {order.fulfillment_status}
-                                        </Badge>
-                                    </div>
                                 </div>
-                            </div>
-                        </Card>
+
+                                {/* Tracking Info */}
+                                {order.tracking_number && (
+                                    <div className="mt-2 pt-2 border-t">
+                                        <p className="text-xs text-muted-foreground">
+                                            Tracking: <span className="font-mono">{order.tracking_number}</span>
+                                        </p>
+                                    </div>
+                                )}
+
+                                {/* Review Button */}
+                                {(order.fulfillment_status === "delivered" || order.payment_status === "paid") && (
+                                    <div className="mt-3 pt-3 border-t flex items-center justify-between">
+                                        <span className="text-sm text-muted-foreground">
+                                            {order.items?.length || 0} รายการ
+                                        </span>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="rounded-full"
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                router.push(`/review?order=${order.order_number}`);
+                                            }}
+                                        >
+                                            <Star className="h-4 w-4 mr-1" />
+                                            เขียนรีวิว
+                                        </Button>
+                                    </div>
+                                )}
+                            </Card>
+                        </Link>
                     ))}
                 </div>
             ) : (
@@ -127,7 +244,7 @@ export default function OrdersPage() {
                         เริ่มช้อปปิ้งกันเลย!
                     </p>
                     <Button onClick={() => router.push("/products")}>
-                        Shop Now
+                        เลือกซื้อสินค้า
                     </Button>
                 </Card>
             )}

@@ -1,32 +1,36 @@
 import Link from "next/link";
-import { Facebook, Instagram, Twitter, Mail, Phone, MapPin } from "lucide-react";
+import { Facebook, Instagram, MessageCircle, Mail, Phone, MapPin, CreditCard } from "lucide-react";
 
 const footerLinks = {
   shop: [
-    { label: "Sunglasses", href: "/products?category=Sunglasses" },
-    { label: "Eyeglasses", href: "/products?category=Eyeglasses" },
-    { label: "Lenses", href: "/products?category=Lenses" },
-    { label: "Accessories", href: "/products?category=Accessories" },
+    { label: "แว่นกันแดด", href: "/products?category=Sunglasses" },
+    { label: "แว่นสายตา", href: "/products?category=Eyeglasses" },
+    { label: "เลนส์", href: "/products?category=Lenses" },
+    { label: "อุปกรณ์เสริม", href: "/products?category=Accessories" },
+    { label: "สินค้าใหม่", href: "/products?sort=newest" },
   ],
   company: [
-    { label: "About Us", href: "/about" },
-    { label: "Our Story", href: "/story" },
-    { label: "Careers", href: "/careers" },
-    { label: "Contact", href: "/contact" },
+    { label: "เกี่ยวกับเรา", href: "/about" },
+    { label: "ติดต่อเรา", href: "/contact" },
+    { label: "สมัครงาน", href: "/careers" },
+    { label: "บล็อก", href: "/blog" },
   ],
   support: [
-    { label: "FAQ", href: "/faq" },
-    { label: "Shipping", href: "/shipping" },
-    { label: "Returns", href: "/returns" },
-    { label: "Size Guide", href: "/size-guide" },
+    { label: "คำถามที่พบบ่อย", href: "/faq" },
+    { label: "วิธีการสั่งซื้อ", href: "/how-to-order" },
+    { label: "การจัดส่ง", href: "/shipping" },
+    { label: "เคลม / คืนสินค้า", href: "/claims" },
+    { label: "วิธีเลือกเลนส์", href: "/lens-guide" },
   ],
 };
 
 const socialLinks = [
-  { icon: Facebook, href: "https://facebook.com", label: "Facebook" },
-  { icon: Instagram, href: "https://instagram.com", label: "Instagram" },
-  { icon: Twitter, href: "https://twitter.com", label: "Twitter" },
+  { icon: Facebook, href: "https://facebook.com/thevisionary", label: "Facebook" },
+  { icon: Instagram, href: "https://instagram.com/thevisionary", label: "Instagram" },
+  { icon: MessageCircle, href: "https://line.me/ti/p/@thevisionary", label: "LINE" },
 ];
+
+const paymentMethods = ["VISA", "Mastercard", "PromptPay", "SCB", "TrueMoney"];
 
 export default function Footer() {
   return (
@@ -42,11 +46,11 @@ export default function Footer() {
               </span>
             </Link>
             <p className="text-background/70 text-sm mb-6">
-              Premium eyewear crafted for those who see the world differently.
+              ร้านแว่นตาพรีเมียม สำหรับผู้ที่มองโลกต่างออกไป
             </p>
             
             {/* Social Links */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3 mb-6">
               {socialLinks.map((social) => {
                 const Icon = social.icon;
                 return (
@@ -63,11 +67,26 @@ export default function Footer() {
                 );
               })}
             </div>
+
+            {/* Payment Methods */}
+            <div>
+              <p className="text-xs text-background/50 mb-2">ช่องทางชำระเงิน</p>
+              <div className="flex flex-wrap gap-2">
+                {paymentMethods.map((method) => (
+                  <span
+                    key={method}
+                    className="px-2 py-1 text-xs bg-background/10 rounded text-background/70"
+                  >
+                    {method}
+                  </span>
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* Shop Links */}
           <div>
-            <h4 className="font-semibold mb-4 text-background">Shop</h4>
+            <h4 className="font-semibold mb-4 text-background">สินค้า</h4>
             <ul className="space-y-3">
               {footerLinks.shop.map((link) => (
                 <li key={link.label}>
@@ -84,7 +103,7 @@ export default function Footer() {
 
           {/* Company Links */}
           <div>
-            <h4 className="font-semibold mb-4 text-background">Company</h4>
+            <h4 className="font-semibold mb-4 text-background">เกี่ยวกับ</h4>
             <ul className="space-y-3">
               {footerLinks.company.map((link) => (
                 <li key={link.label}>
@@ -101,7 +120,7 @@ export default function Footer() {
 
           {/* Support Links */}
           <div>
-            <h4 className="font-semibold mb-4 text-background">Support</h4>
+            <h4 className="font-semibold mb-4 text-background">ช่วยเหลือ</h4>
             <ul className="space-y-3">
               {footerLinks.support.map((link) => (
                 <li key={link.label}>
@@ -118,19 +137,23 @@ export default function Footer() {
 
           {/* Contact Info */}
           <div className="col-span-2 md:col-span-4 lg:col-span-1">
-            <h4 className="font-semibold mb-4 text-background">Contact Us</h4>
+            <h4 className="font-semibold mb-4 text-background">ติดต่อเรา</h4>
             <ul className="space-y-3">
               <li className="flex items-start gap-3 text-background/70 text-sm">
                 <MapPin className="h-5 w-5 flex-shrink-0" />
-                <span>123 Sukhumvit Road, Bangkok 10110</span>
+                <span>123 ถนนสุขุมวิท กรุงเทพฯ 10110</span>
               </li>
               <li className="flex items-center gap-3 text-background/70 text-sm">
                 <Phone className="h-5 w-5 flex-shrink-0" />
-                <span>02-123-4567</span>
+                <span>02-XXX-XXXX</span>
+              </li>
+              <li className="flex items-center gap-3 text-background/70 text-sm">
+                <MessageCircle className="h-5 w-5 flex-shrink-0" />
+                <span>LINE: @thevisionary</span>
               </li>
               <li className="flex items-center gap-3 text-background/70 text-sm">
                 <Mail className="h-5 w-5 flex-shrink-0" />
-                <span>hello@visionary.co.th</span>
+                <span>hello@thevisionary.co.th</span>
               </li>
             </ul>
           </div>
@@ -139,14 +162,14 @@ export default function Footer() {
         {/* Bottom Bar */}
         <div className="border-t border-background/10 py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-background/60 text-sm">
-            © {new Date().getFullYear()} The Visionary. All rights reserved.
+            © {new Date().getFullYear()} The Visionary. สงวนลิขสิทธิ์
           </p>
           <div className="flex items-center gap-6">
             <Link href="/privacy" className="text-background/60 hover:text-background text-sm transition-colors">
-              Privacy Policy
+              นโยบายความเป็นส่วนตัว
             </Link>
             <Link href="/terms" className="text-background/60 hover:text-background text-sm transition-colors">
-              Terms of Service
+              ข้อกำหนดการใช้งาน
             </Link>
           </div>
         </div>
@@ -154,3 +177,4 @@ export default function Footer() {
     </footer>
   );
 }
+

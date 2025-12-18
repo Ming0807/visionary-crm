@@ -18,7 +18,8 @@ import {
   LogOut,
   UserCircle,
   Menu,
-  X
+  X,
+  UserPlus
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { RealtimeProvider } from "@/components/RealtimeProvider";
@@ -33,6 +34,8 @@ const sidebarLinks = [
   { href: "/admin/coupons", label: "Coupons", icon: Tag },
   { href: "/admin/campaigns", label: "Campaigns", icon: Megaphone },
   { href: "/admin/claims", label: "Claims", icon: FileText },
+  { href: "/admin/testimonials", label: "Testimonials", icon: MessageSquare },
+  { href: "/admin/team", label: "Team", icon: UserPlus },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 

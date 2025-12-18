@@ -54,7 +54,7 @@ export default function AccountPage() {
 
     const fetchOrders = async () => {
         if (!customer?.id) return;
-        const { data } = await supabase
+        const { data, error } = await supabase
             .from("orders")
             .select("id, order_number, total_amount, fulfillment_status, created_at")
             .eq("customer_id", customer.id)

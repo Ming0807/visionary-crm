@@ -9,10 +9,11 @@ import CartDrawer from "@/components/CartDrawer";
 import UserMenu from "@/components/UserMenu";
 
 const navLinks = [
-  { href: "/", label: "Home" },
-  { href: "/products", label: "Shop" },
-  { href: "/collections", label: "Collections" },
-  { href: "/about", label: "About" },
+  { href: "/", label: "หน้าแรก" },
+  { href: "/products", label: "สินค้า" },
+  { href: "/collections", label: "คอลเลกชัน" },
+  { href: "/about", label: "เกี่ยวกับเรา" },
+  { href: "/contact", label: "ติดต่อ" },
 ];
 
 export default function Navbar() {
@@ -47,10 +48,12 @@ export default function Navbar() {
             {/* Right Actions */}
             <div className="flex items-center space-x-4">
               {/* Search */}
-              <Button variant="ghost" size="icon" className="hidden sm:flex">
-                <Search className="h-5 w-5" />
-                <span className="sr-only">Search</span>
-              </Button>
+              <Link href="/search">
+                <Button variant="ghost" size="icon" className="hidden sm:flex">
+                  <Search className="h-5 w-5" />
+                  <span className="sr-only">ค้นหา</span>
+                </Button>
+              </Link>
 
               {/* User Menu (Login/Profile) */}
               <div className="hidden sm:block">

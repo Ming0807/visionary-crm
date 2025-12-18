@@ -79,8 +79,8 @@ export default function ProductDetail({ product }: ProductDetailProps) {
     });
 
     toast({
-      title: "Added to cart!",
-      description: `${product.name} (${selectedVariant.color_name}) has been added to your bag.`,
+      title: "เพิ่มลงตะกร้าแล้ว!",
+      description: `${product.name} (${selectedVariant.color_name}) ถูกเพิ่มลงตะกร้าของคุณ`,
     });
   };
 
@@ -168,7 +168,7 @@ export default function ProductDetail({ product }: ProductDetailProps) {
           {product.variants.length > 1 && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="font-medium text-foreground">Color</span>
+                <span className="font-medium text-foreground">สี</span>
                 <span className="text-sm text-muted-foreground">
                   {selectedVariant?.color_name}
                 </span>
@@ -210,10 +210,10 @@ export default function ProductDetail({ product }: ProductDetailProps) {
               isOutOfStock ? "text-destructive" : stock <= 5 ? "text-orange-500" : "text-green-600"
             }`}>
               {isOutOfStock 
-                ? "Out of Stock" 
+                ? "สินค้าหมด" 
                 : stock <= 5 
-                  ? `Only ${stock} left!` 
-                  : "In Stock"}
+                  ? `เหลือเพียง ${stock} ชิ้น!` 
+                  : "มีสินค้า"}
             </span>
           </div>
 
@@ -230,40 +230,40 @@ export default function ProductDetail({ product }: ProductDetailProps) {
             disabled={isOutOfStock}
           >
             <ShoppingBag className="mr-2 h-5 w-5" />
-            {isOutOfStock ? "Out of Stock" : "Add to Cart"}
+            {isOutOfStock ? "สินค้าหมด" : "เพิ่มลงตะกร้า"}
           </Button>
 
           {/* Trust Badges */}
           <div className="grid grid-cols-3 gap-4 pt-4">
             <div className="text-center">
               <Truck className="h-6 w-6 mx-auto text-primary mb-2" />
-              <p className="text-xs text-muted-foreground">Free Shipping</p>
+              <p className="text-xs text-muted-foreground">ส่งฟรี</p>
             </div>
             <div className="text-center">
               <Shield className="h-6 w-6 mx-auto text-primary mb-2" />
-              <p className="text-xs text-muted-foreground">1 Year Warranty</p>
+              <p className="text-xs text-muted-foreground">รับประกัน 1 ปี</p>
             </div>
             <div className="text-center">
               <RotateCcw className="h-6 w-6 mx-auto text-primary mb-2" />
-              <p className="text-xs text-muted-foreground">30-Day Returns</p>
+              <p className="text-xs text-muted-foreground">คืนได้ 30 วัน</p>
             </div>
           </div>
 
           {/* Material Info */}
           {selectedVariant?.frame_material && (
             <div className="bg-muted/50 rounded-2xl p-4">
-              <h3 className="font-medium text-foreground mb-2">Specifications</h3>
+              <h3 className="font-medium text-foreground mb-2">รายละเอียดสินค้า</h3>
               <dl className="grid grid-cols-2 gap-2 text-sm">
-                <dt className="text-muted-foreground">Material</dt>
+                <dt className="text-muted-foreground">วัสดุ</dt>
                 <dd className="font-medium">{selectedVariant.frame_material}</dd>
                 {selectedVariant.size_label && (
                   <>
-                    <dt className="text-muted-foreground">Size</dt>
+                    <dt className="text-muted-foreground">ขนาด</dt>
                     <dd className="font-medium">{selectedVariant.size_label}</dd>
                   </>
                 )}
-                <dt className="text-muted-foreground">Gender</dt>
-                <dd className="font-medium capitalize">{product.gender}</dd>
+                <dt className="text-muted-foreground">เพศ</dt>
+                <dd className="font-medium capitalize">{product.gender === 'unisex' ? 'Unisex' : product.gender === 'male' ? 'ชาย' : product.gender === 'female' ? 'หญิง' : product.gender}</dd>
               </dl>
             </div>
           )}

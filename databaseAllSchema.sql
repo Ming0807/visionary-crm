@@ -274,6 +274,12 @@ CREATE TABLE public.referral_codes (
   CONSTRAINT referral_codes_pkey PRIMARY KEY (id),
   CONSTRAINT referral_codes_customer_id_fkey FOREIGN KEY (customer_id) REFERENCES public.customers(id)
 );
+CREATE TABLE public.site_settings (
+  key character varying NOT NULL,
+  value jsonb NOT NULL DEFAULT '{}'::jsonb,
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT site_settings_pkey PRIMARY KEY (key)
+);
 CREATE TABLE public.social_identities (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
   customer_id uuid,
@@ -289,4 +295,29 @@ CREATE TABLE public.social_identities (
   last_active timestamp with time zone DEFAULT now(),
   CONSTRAINT social_identities_pkey PRIMARY KEY (id),
   CONSTRAINT social_identities_customer_id_fkey FOREIGN KEY (customer_id) REFERENCES public.customers(id)
+);
+CREATE TABLE public.team_members (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  name character varying NOT NULL,
+  role character varying NOT NULL,
+  image_url text,
+  display_order integer DEFAULT 0,
+  is_active boolean DEFAULT true,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT team_members_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.testimonials (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  customer_name character varying NOT NULL,
+  avatar_url text,
+  rating integer CHECK (rating >= 1 AND rating <= 5),
+  comment text NOT NULL,
+  product_name character varying,
+  is_featured boolean DEFAULT false,
+  is_active boolean DEFAULT true,
+  display_order integer DEFAULT 0,
+  created_at timestamp with time zone DEFAULT now(),
+  customer_id uuid,
+  CONSTRAINT testimonials_pkey PRIMARY KEY (id),
+  CONSTRAINT testimonials_customer_id_fkey FOREIGN KEY (customer_id) REFERENCES public.customers(id)
 );

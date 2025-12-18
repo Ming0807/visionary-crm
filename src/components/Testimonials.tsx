@@ -1,42 +1,51 @@
-import { Star, Quote } from "lucide-react";
+import { Star, Quote, ArrowRight } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
+import { supabase } from "@/lib/supabase";
+import { Button } from "@/components/ui/button";
 
-const testimonials = [
-    {
-        id: 1,
-        name: "คุณแพรว",
-        avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop",
-        rating: 5,
-        text: "ซื้อแว่น Ray-Ban มา สวยมากคะ ของแท้ บริการดีเยี่ยม จัดส่งเร็วมาก 2 วันก็ได้รับแล้ว",
-        product: "Ray-Ban Aviator Classic",
-    },
-    {
-        id: 2,
-        name: "คุณต้า",
-        avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop",
-        rating: 5,
-        text: "ประทับใจมากครับ แนะนำเลนส์ได้ดี ตัดแว่นเสร็จเร็ว ใส่สบายตา ไม่มืนหัว",
-        product: "Oakley Holbrook",
-    },
-    {
-        id: 3,
-        name: "คุณแนน",
-        avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop",
-        rating: 5,
-        text: "เป็นลูกค้าประจำมา 3 ปีแล้วคะ บริการหลังการขายดีมาก เปลี่ยนเลนส์ ปรับกรอบ ฟรีตลอด",
-        product: "Tom Ford FT5294",
-    },
-    {
-        id: 4,
-        name: "คุณบอส",
-        avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop",
-        rating: 5,
-        text: "ราคาดีที่สุดที่หาได้ ของแท้ มีใบรับประกัน ผ่อนได้ด้วย ต้องบอกต่อเลย",
-        product: "Gucci GG0061S",
-    },
-];
+interface Testimonial {
+    id: string;
+    customer_name: string;
+    avatar_url: string;
+    rating: number;
+    comment: string;
+    product_name: string;
+}
 
-export default function Testimonials() {
+// Empty fallback - we want to show real data only
+const fallbackTestimonials: Testimonial[] = [];
+
+async function getTestimonials(): Promise<Testimonial[]> {
+    try {
+        const { data, error } = await supabase
+            .from("testimonials")
+            .select("*")
+            .eq("is_active", true)
+            .eq("is_featured", true)
+            .order("display_order", { ascending: true })
+            .limit(4);
+
+        if (error) {
+            console.error("Testimonials fetch error:", error);
+            return fallbackTestimonials;
+        }
+
+        return data || fallbackTestimonials;
+    } catch (e) {
+        console.error("Testimonials error:", e);
+        return fallbackTestimonials;
+    }
+}
+
+export default async function Testimonials() {
+    const testimonials = await getTestimonials();
+
+    // Don't render if no testimonials
+    if (!testimonials || testimonials.length === 0) {
+        return null;
+    }
+
     return (
         <section className="py-16 lg:py-24">
             <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -46,7 +55,7 @@ export default function Testimonials() {
                         ลูกค้าของเราพูดถึงเรา
                     </h2>
                     <p className="text-muted-foreground max-w-2xl mx-auto">
-                        รีวิวจริงจากลูกค้าที่ไว้วางใจ The Visionary
+                        รีวิวจากลูกค้าที่ไว้วางใจเลือกซื้อแว่นตากับเรา
                     </p>
                 </div>
 
@@ -55,13 +64,13 @@ export default function Testimonials() {
                     {testimonials.map((testimonial) => (
                         <div
                             key={testimonial.id}
-                            className="bg-card rounded-2xl p-6 border border-border hover:shadow-lg transition-shadow"
+                            className="bg-card rounded-2xl p-6 border border-border hover:shadow-lg transition-shadow relative"
                         >
                             {/* Quote Icon */}
-                            <Quote className="h-8 w-8 text-primary/20 mb-4" />
-                            
-                            {/* Rating */}
-                            <div className="flex gap-1 mb-3">
+                            <Quote className="h-8 w-8 text-primary/20 absolute top-4 right-4" />
+
+                            {/* Stars */}
+                            <div className="flex gap-1 mb-4">
                                 {[...Array(testimonial.rating)].map((_, i) => (
                                     <Star
                                         key={i}
@@ -70,37 +79,51 @@ export default function Testimonials() {
                                 ))}
                             </div>
 
-                            {/* Text */}
-                            <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
-                                "{testimonial.text}"
-                            </p>
-
-                            {/* Product */}
-                            <p className="text-xs text-primary font-medium mb-4">
-                                ซื้อ: {testimonial.product}
+                            {/* Comment */}
+                            <p className="text-foreground mb-6 line-clamp-4">
+                                "{testimonial.comment}"
                             </p>
 
                             {/* Author */}
                             <div className="flex items-center gap-3">
-                                <div className="relative w-10 h-10 rounded-full overflow-hidden">
+                                {testimonial.avatar_url ? (
                                     <Image
-                                        src={testimonial.avatar}
-                                        alt={testimonial.name}
-                                        fill
-                                        className="object-cover"
+                                        src={testimonial.avatar_url}
+                                        alt={testimonial.customer_name}
+                                        width={40}
+                                        height={40}
+                                        className="rounded-full object-cover"
                                     />
-                                </div>
+                                ) : (
+                                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                                        <span className="text-primary font-semibold">
+                                            {testimonial.customer_name.charAt(0)}
+                                        </span>
+                                    </div>
+                                )}
                                 <div>
                                     <p className="font-medium text-foreground text-sm">
-                                        {testimonial.name}
+                                        {testimonial.customer_name}
                                     </p>
-                                    <p className="text-xs text-muted-foreground">
-                                        ลูกค้า Verified ✓
-                                    </p>
+                                    {testimonial.product_name && (
+                                        <p className="text-xs text-muted-foreground">
+                                            ซื้อ {testimonial.product_name}
+                                        </p>
+                                    )}
                                 </div>
                             </div>
                         </div>
                     ))}
+                </div>
+
+                {/* View All Button */}
+                <div className="text-center mt-10">
+                    <Button asChild variant="outline" size="lg" className="rounded-full">
+                        <Link href="/reviews">
+                            ดูรีวิวทั้งหมด
+                            <ArrowRight className="ml-2 h-4 w-4" />
+                        </Link>
+                    </Button>
                 </div>
             </div>
         </section>
