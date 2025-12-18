@@ -3,14 +3,14 @@ import { Metadata } from "next";
 import { supabase } from "@/lib/supabase";
 import ProductCard from "@/components/ProductCard";
 import { Button } from "@/components/ui/button";
-import { SlidersHorizontal, Grid, List } from "lucide-react";
+import { SlidersHorizontal, Tag } from "lucide-react";
 
 export const metadata: Metadata = {
     title: "สินค้าทั้งหมด",
     description: "เลือกซื้อแว่นตาพรีเมียมจากแบรนด์ดังหลากหลาย Ray-Ban, Oakley, Gucci และอื่นๆ",
 };
 
-async function getProducts() {
+async function getProducts(saleOnly: boolean = false) {
     const { data: products, error } = await supabase
         .from("products")
         .select(`
@@ -22,6 +22,10 @@ async function getProducts() {
                 color_code,
                 price,
                 images,
+                is_on_sale,
+                compare_at_price,
+                sale_start_date,
+                sale_end_date,
                 inventory(quantity)
             )
         `)
@@ -33,7 +37,26 @@ async function getProducts() {
         return [];
     }
 
-    return products;
+    // Filter for sale products if needed
+    if (saleOnly && products) {
+        const now = new Date().toISOString();
+        return products.filter((product) => {
+            if (!product.variants || product.variants.length === 0) return false;
+            return product.variants.some((v: {
+                is_on_sale: boolean;
+                sale_start_date: string | null;
+                sale_end_date: string | null;
+                compare_at_price: number | null;
+            }) => {
+                if (!v.is_on_sale) return false;
+                const startOk = !v.sale_start_date || v.sale_start_date <= now;
+                const endOk = !v.sale_end_date || v.sale_end_date >= now;
+                return startOk && endOk;
+            });
+        });
+    }
+
+    return products || [];
 }
 
 async function getCategories() {
@@ -62,9 +85,16 @@ async function getBrands() {
     return unique as string[];
 }
 
-export default async function ProductsPage() {
+interface PageProps {
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}
+
+export default async function ProductsPage({ searchParams }: PageProps) {
+    const params = await searchParams;
+    const saleOnly = params.sale === "true";
+    
     const [products, categories, brands] = await Promise.all([
-        getProducts(),
+        getProducts(saleOnly),
         getCategories(),
         getBrands(),
     ]);
@@ -74,23 +104,53 @@ export default async function ProductsPage() {
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
                 <div>
-                    <h1 className="text-3xl font-bold text-foreground">สินค้าทั้งหมด</h1>
+                    <h1 className="text-3xl font-bold text-foreground">
+                        {saleOnly ? (
+                            <span className="flex items-center gap-2">
+                                <Tag className="h-8 w-8 text-red-500" />
+                                Flash Sale
+                            </span>
+                        ) : "สินค้าทั้งหมด"}
+                    </h1>
                     <p className="text-muted-foreground mt-1">
-                        แว่นตาพรีเมียมคุณภาพสูงจากแบรนด์ชั้นนำ ({products.length} รายการ)
+                        {saleOnly 
+                            ? `สินค้าลดราคาพิเศษ (${products.length} รายการ)` 
+                            : `แว่นตาพรีเมียมคุณภาพสูงจากแบรนด์ชั้นนำ (${products.length} รายการ)`}
                     </p>
                 </div>
             </div>
 
             {/* Filter Pills */}
             <div className="flex flex-wrap items-center gap-3 mb-6 pb-4 border-b border-border">
-                {/* Category Pills */}
+                {/* All Products */}
                 <Link
                     href="/products"
-                    className="px-4 py-2 rounded-full bg-primary text-primary-foreground text-sm font-medium"
+                    className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                        !saleOnly 
+                            ? "bg-primary text-primary-foreground" 
+                            : "bg-muted text-muted-foreground hover:bg-muted/80"
+                    }`}
                 >
                     ทั้งหมด
                 </Link>
-                {categories.slice(0, 5).map((cat) => (
+                
+                {/* Sale Filter Pill */}
+                <Link
+                    href="/products?sale=true"
+                    className={`px-4 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                        saleOnly 
+                            ? "bg-red-500 text-white" 
+                            : "bg-red-100 text-red-600 hover:bg-red-200 dark:bg-red-950 dark:text-red-400"
+                    }`}
+                >
+                    🔥 Sale
+                </Link>
+                
+                {/* Divider */}
+                <div className="hidden md:block w-px h-6 bg-border" />
+                
+                {/* Category Pills */}
+                {categories.slice(0, 4).map((cat) => (
                     <Link
                         key={cat}
                         href={`/products?category=${encodeURIComponent(cat)}`}
@@ -103,11 +163,8 @@ export default async function ProductsPage() {
                     </Link>
                 ))}
 
-                {/* Divider */}
-                <div className="hidden md:block w-px h-6 bg-border" />
-
                 {/* Brand Pills */}
-                {brands.slice(0, 4).map((brand) => (
+                {brands.slice(0, 3).map((brand) => (
                     <Link
                         key={brand}
                         href={`/products?brand=${encodeURIComponent(brand)}`}
@@ -139,14 +196,20 @@ export default async function ProductsPage() {
             ) : (
                 <div className="text-center py-20">
                     <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center mx-auto mb-6">
-                        <SlidersHorizontal className="h-10 w-10 text-muted-foreground" />
+                        {saleOnly ? <Tag className="h-10 w-10 text-muted-foreground" /> : <SlidersHorizontal className="h-10 w-10 text-muted-foreground" />}
                     </div>
-                    <h3 className="text-xl font-semibold text-foreground mb-2">ยังไม่มีสินค้า</h3>
+                    <h3 className="text-xl font-semibold text-foreground mb-2">
+                        {saleOnly ? "ยังไม่มีสินค้าลดราคา" : "ยังไม่มีสินค้า"}
+                    </h3>
                     <p className="text-muted-foreground mb-6">
-                        สินค้าจะแสดงที่นี่เมื่อมีการเพิ่มเข้าระบบ
+                        {saleOnly 
+                            ? "ไม่มีสินค้าลดราคาในขณะนี้ ลองดูสินค้าทั้งหมด"
+                            : "สินค้าจะแสดงที่นี่เมื่อมีการเพิ่มเข้าระบบ"}
                     </p>
                     <Button asChild>
-                        <Link href="/admin/products/new">เพิ่มสินค้าแรก</Link>
+                        {saleOnly 
+                            ? <Link href="/products">ดูสินค้าทั้งหมด</Link>
+                            : <Link href="/admin/products/new">เพิ่มสินค้าแรก</Link>}
                     </Button>
                 </div>
             )}

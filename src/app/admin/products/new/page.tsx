@@ -29,6 +29,11 @@ interface VariantForm {
   sizeLabel: string;
   images: string[];
   stock: string;
+  // Sale fields
+  isOnSale: boolean;
+  compareAtPrice: string;
+  saleStartDate: string;
+  saleEndDate: string;
 }
 
 const categories = ["Sunglasses", "Eyeglasses", "Lenses", "Accessories"];
@@ -60,6 +65,10 @@ export default function NewProductPage() {
       sizeLabel: "",
       images: [],
       stock: "10",
+      isOnSale: false,
+      compareAtPrice: "",
+      saleStartDate: "",
+      saleEndDate: "",
     },
   ]);
 
@@ -87,6 +96,10 @@ export default function NewProductPage() {
         sizeLabel: "",
         images: [],
         stock: "10",
+        isOnSale: false,
+        compareAtPrice: "",
+        saleStartDate: "",
+        saleEndDate: "",
       },
     ]);
   };
@@ -148,6 +161,11 @@ export default function NewProductPage() {
             cost_price: variant.costPrice ? parseFloat(variant.costPrice) : 0,
             images: variant.images,
             is_active: true,
+            // Sale fields
+            is_on_sale: variant.isOnSale,
+            compare_at_price: variant.compareAtPrice ? parseFloat(variant.compareAtPrice) : null,
+            sale_start_date: variant.saleStartDate || null,
+            sale_end_date: variant.saleEndDate || null,
           })
           .select("id")
           .single();
@@ -421,6 +439,65 @@ export default function NewProductPage() {
                       maxImages={5}
                       type="product"
                     />
+                  </div>
+
+                  {/* Sale Settings */}
+                  <div className="sm:col-span-3 p-4 bg-orange-50 dark:bg-orange-950/20 rounded-lg border border-orange-200 dark:border-orange-900">
+                    <div className="flex items-center gap-3 mb-3">
+                      <input
+                        type="checkbox"
+                        id={`sale-${variant.id}`}
+                        checked={variant.isOnSale}
+                        onChange={(e) =>
+                          setVariants((prev) =>
+                            prev.map((v) => (v.id === variant.id ? { ...v, isOnSale: e.target.checked } : v))
+                          )
+                        }
+                        className="w-4 h-4 rounded"
+                      />
+                      <Label htmlFor={`sale-${variant.id}`} className="text-orange-700 dark:text-orange-300 font-medium">
+                        🏷️ On Sale
+                      </Label>
+                    </div>
+                    
+                    {variant.isOnSale && (
+                      <div className="grid sm:grid-cols-3 gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-xs">Compare Price (Original)</Label>
+                          <Input
+                            type="number"
+                            value={variant.compareAtPrice}
+                            onChange={(e) =>
+                              handleVariantChange(variant.id, "compareAtPrice", e.target.value)
+                            }
+                            placeholder="3,500"
+                            className="bg-white dark:bg-background"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Start Date</Label>
+                          <Input
+                            type="datetime-local"
+                            value={variant.saleStartDate}
+                            onChange={(e) =>
+                              handleVariantChange(variant.id, "saleStartDate", e.target.value)
+                            }
+                            className="bg-white dark:bg-background"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">End Date</Label>
+                          <Input
+                            type="datetime-local"
+                            value={variant.saleEndDate}
+                            onChange={(e) =>
+                              handleVariantChange(variant.id, "saleEndDate", e.target.value)
+                            }
+                            className="bg-white dark:bg-background"
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

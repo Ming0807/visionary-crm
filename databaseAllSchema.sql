@@ -246,6 +246,10 @@ CREATE TABLE public.product_variants (
   is_active boolean DEFAULT true,
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
+  compare_at_price numeric,
+  is_on_sale boolean DEFAULT false,
+  sale_start_date timestamp with time zone,
+  sale_end_date timestamp with time zone,
   CONSTRAINT product_variants_pkey PRIMARY KEY (id),
   CONSTRAINT product_variants_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.products(id)
 );

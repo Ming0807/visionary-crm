@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { ShoppingBag, Menu, X, Search } from "lucide-react";
 import { useState } from "react";
 import { useCart } from "@/context/CartContext";
+import { useStoreConfig } from "@/context/StoreConfigContext";
 import { Button } from "@/components/ui/button";
 import CartDrawer from "@/components/CartDrawer";
 import UserMenu from "@/components/UserMenu";
@@ -19,17 +21,35 @@ const navLinks = [
 export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { totalItems, setIsOpen } = useCart();
+  const { config } = useStoreConfig();
 
   return (
     <>
       <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <nav className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
-            {/* Logo */}
-            <Link href="/" className="flex items-center space-x-2">
-              <span className="text-2xl font-bold tracking-tight text-foreground">
-                The <span className="text-primary">Visionary</span>
-              </span>
+            {/* Logo - Larger for brand visibility */}
+            <Link href="/" className="flex items-center flex-shrink-0">
+              <div className="h-16 py-1 min-w-[200px] flex items-center">
+                {config.logo ? (
+                  <img 
+                    src={config.logo} 
+                    alt={config.siteName} 
+                    className="h-full w-auto max-w-[280px] object-contain"
+                  />
+                ) : (
+                  <span className="text-xl sm:text-2xl font-bold tracking-tight text-foreground whitespace-nowrap">
+                    {config.siteName.includes(" ") ? (
+                      <>
+                        {config.siteName.split(" ")[0]}{" "}
+                        <span className="text-primary">{config.siteName.split(" ").slice(1).join(" ")}</span>
+                      </>
+                    ) : (
+                      <span className="text-primary">{config.siteName}</span>
+                    )}
+                  </span>
+                )}
+              </div>
             </Link>
 
             {/* Desktop Navigation */}
@@ -96,17 +116,35 @@ export default function Navbar() {
           {/* Mobile Menu */}
           {isMobileMenuOpen && (
             <div className="md:hidden border-t border-border py-4 animate-fade-in">
-              <div className="flex flex-col space-y-4">
+              <div className="flex flex-col space-y-2">
+                {/* Mobile Navigation Links */}
                 {navLinks.map((link) => (
                   <Link
                     key={link.href}
                     href={link.href}
-                    className="text-sm font-medium text-muted-foreground hover:text-foreground transition-smooth px-2 py-1"
+                    className="text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-smooth px-4 py-3 rounded-lg"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     {link.label}
                   </Link>
                 ))}
+                
+                {/* Mobile Search */}
+                <Link 
+                  href="/search" 
+                  className="text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-smooth px-4 py-3 rounded-lg flex items-center gap-2 sm:hidden"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <Search className="h-4 w-4" />
+                  ค้นหา
+                </Link>
+              </div>
+              
+              {/* Mobile User Menu / Login - Full width centered */}
+              <div className="mt-4 pt-4 border-t border-border sm:hidden">
+                <div className="flex justify-center">
+                  <UserMenu />
+                </div>
               </div>
             </div>
           )}

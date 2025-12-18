@@ -3,6 +3,8 @@
 import { usePathname } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import DynamicFavicon from "@/components/DynamicFavicon";
+import { StoreConfigProvider } from "@/context/StoreConfigContext";
 
 export default function LayoutWrapper({
   children,
@@ -18,10 +20,14 @@ export default function LayoutWrapper({
   }
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <Navbar />
-      <main className="flex-1">{children}</main>
-      <Footer />
-    </div>
+    <StoreConfigProvider>
+      <DynamicFavicon />
+      <div className="flex min-h-screen flex-col">
+        <Navbar />
+        <main className="flex-1">{children}</main>
+        <Footer />
+      </div>
+    </StoreConfigProvider>
   );
 }
+

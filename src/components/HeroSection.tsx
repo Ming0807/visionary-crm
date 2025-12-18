@@ -1,11 +1,93 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+
+interface HeroSettings {
+  badge: string;
+  headline: string;
+  subheadline: string;
+  ctaText: string;
+  ctaLink: string;
+  image: string;
+}
+
+interface HeroStats {
+  productCount: number;
+  customerCount: number;
+  avgRating: number;
+}
+
+const defaultHero: HeroSettings = {
+  badge: "คอลเลกชันใหม่ 2024",
+  headline: "ค้นหาแว่นตาที่ใช่คุณ",
+  subheadline: "แว่นตาพรีเมียม สำหรับคนที่มองโลกต่างออกไป ค้นหาสไตล์ของคุณวันนี้",
+  ctaText: "เลือกชมคอลเลกชัน",
+  ctaLink: "/products",
+  image: "https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=800&q=80",
+};
 
 export default function HeroSection() {
+  const [hero, setHero] = useState<HeroSettings>(defaultHero);
+  const [stats, setStats] = useState<HeroStats>({
+    productCount: 0,
+    customerCount: 0,
+    avgRating: 5,
+  });
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch hero settings from site_settings
+        const heroRes = await fetch("/api/settings/hero_section");
+        const heroData = await heroRes.json();
+        if (heroData?.value) {
+          setHero({ ...defaultHero, ...heroData.value });
+        }
+
+        // Fetch stats
+        const { count: productCount } = await supabase
+          .from("products")
+          .select("id", { count: "exact", head: true })
+          .eq("is_active", true);
+
+        const { count: customerCount } = await supabase
+          .from("customers")
+          .select("id", { count: "exact", head: true });
+
+        const { data: ratings } = await supabase
+          .from("testimonials")
+          .select("rating")
+          .eq("is_active", true);
+
+        const avgRating = ratings && ratings.length > 0
+          ? ratings.reduce((sum, r) => sum + (r.rating || 5), 0) / ratings.length
+          : 5;
+
+        setStats({
+          productCount: productCount || 0,
+          customerCount: customerCount || 0,
+          avgRating: Math.round(avgRating * 10) / 10,
+        });
+      } catch (error) {
+        console.error("Error fetching hero data:", error);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const formatNumber = (num: number) => {
+    if (num >= 1000) {
+      return (num / 1000).toFixed(num >= 10000 ? 0 : 1) + "K+";
+    }
+    return num > 0 ? num.toString() + "+" : "500+";
+  };
+
   return (
     <section className="relative overflow-hidden bg-secondary">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -14,15 +96,15 @@ export default function HeroSection() {
           <div className="space-y-6 lg:space-y-8 text-center lg:text-left animate-fade-in">
             <div className="space-y-4">
               <span className="inline-block px-4 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium">
-                คอลเลกชันใหม่ 2024
+                {hero.badge}
               </span>
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-foreground">
-                ค้นหาแว่นตา
-                <span className="block text-primary">ที่ใช่คุณ</span>
+                {hero.headline.split("ที่").map((part, i) => 
+                  i === 0 ? part : <span key={i} className="block text-primary">ที่{part}</span>
+                )}
               </h1>
               <p className="text-lg text-muted-foreground max-w-md mx-auto lg:mx-0">
-                แว่นตาพรีเมียม สำหรับคนที่มองโลกต่างออกไป 
-                ค้นหาสไตล์ของคุณวันนี้
+                {hero.subheadline}
               </p>
             </div>
 
@@ -32,8 +114,8 @@ export default function HeroSection() {
                 className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full px-8"
                 asChild
               >
-                <Link href="/products">
-                  เลือกชมคอลเลกชัน
+                <Link href={hero.ctaLink}>
+                  {hero.ctaText}
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
@@ -49,21 +131,27 @@ export default function HeroSection() {
               </Button>
             </div>
 
-            {/* Stats */}
+            {/* Stats - Dynamic */}
             <div className="flex items-center justify-center lg:justify-start gap-8 pt-4">
               <div>
-                <p className="text-3xl font-bold text-foreground">500+</p>
+                <p className="text-3xl font-bold text-foreground">
+                  {formatNumber(stats.productCount)}
+                </p>
                 <p className="text-sm text-muted-foreground">สไตล์พรีเมียม</p>
               </div>
               <div className="w-px h-12 bg-border" />
               <div>
-                <p className="text-3xl font-bold text-foreground">50K+</p>
+                <p className="text-3xl font-bold text-foreground">
+                  {formatNumber(stats.customerCount)}
+                </p>
                 <p className="text-sm text-muted-foreground">ลูกค้าพึงพอใจ</p>
               </div>
               <div className="w-px h-12 bg-border" />
               <div>
-                <p className="text-3xl font-bold text-foreground">5★</p>
-                <p className="text-sm text-muted-foreground">คะแนนสูงสุด</p>
+                <p className="text-3xl font-bold text-foreground">
+                  {stats.avgRating.toFixed(1)}★
+                </p>
+                <p className="text-sm text-muted-foreground">คะแนนเฉลี่ย</p>
               </div>
             </div>
           </div>
@@ -73,12 +161,13 @@ export default function HeroSection() {
             <div className="relative aspect-square max-w-lg mx-auto">
               {/* Background decoration */}
               <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-accent/10 rounded-3xl transform rotate-3" />
-              <div className="absolute inset-0 bg-card rounded-3xl shadow-premium">
+              <div className="absolute inset-0 bg-card rounded-3xl shadow-premium overflow-hidden">
                 <Image
-                  src="https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=800&q=80"
-                  alt="Premium sunglasses showcase"
+                  src={hero.image}
+                  alt="Premium eyewear showcase"
                   fill
-                  className="object-cover rounded-3xl"
+                  sizes="(max-width: 768px) 100vw, 50vw"
+                  className="object-cover"
                   priority
                 />
               </div>

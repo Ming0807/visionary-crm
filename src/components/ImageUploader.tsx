@@ -10,7 +10,7 @@ interface ImageUploaderProps {
     images: string[];
     onChange: (images: string[]) => void;
     maxImages?: number;
-    type?: "product" | "profile" | "slip";
+    type?: "product" | "profile" | "slip" | "hero" | "logo" | "favicon" | "category" | "brand";
     className?: string;
 }
 

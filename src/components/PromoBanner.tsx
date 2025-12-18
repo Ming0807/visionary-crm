@@ -12,16 +12,24 @@ interface TimeLeft {
     seconds: number;
 }
 
-// Fixed end date - set it to a specific date or calculate on client only
-const getEndDate = () => {
-    const endDate = new Date();
-    endDate.setDate(endDate.getDate() + 7);
-    endDate.setHours(23, 59, 59, 999);
-    return endDate;
+interface PromoSettings {
+    enabled: boolean;
+    title: string;
+    subtitle: string;
+    endDate: string | null;
+    daysFromNow?: number;
+}
+
+const defaultPromo: PromoSettings = {
+    enabled: true,
+    title: "🔥 Flash Sale",
+    subtitle: "ลดสูงสุด 50%",
+    endDate: null,
+    daysFromNow: 7,
 };
 
 export default function PromoBanner() {
-    // Start with zeros to avoid hydration mismatch
+    const [promo, setPromo] = useState<PromoSettings>(defaultPromo);
     const [timeLeft, setTimeLeft] = useState<TimeLeft>({
         days: 0,
         hours: 0,
@@ -30,8 +38,37 @@ export default function PromoBanner() {
     });
     const [mounted, setMounted] = useState(false);
 
+    // Fetch promo settings from DB
     useEffect(() => {
+        const fetchSettings = async () => {
+            try {
+                const res = await fetch("/api/settings/promo_banner");
+                const data = await res.json();
+                if (data?.value) {
+                    setPromo({ ...defaultPromo, ...data.value });
+                }
+            } catch (error) {
+                console.error("Failed to fetch promo settings:", error);
+            }
+        };
+        fetchSettings();
+    }, []);
+
+    useEffect(() => {
+        if (!promo.enabled) return;
+
         setMounted(true);
+
+        const getEndDate = () => {
+            if (promo.endDate) {
+                return new Date(promo.endDate);
+            }
+            const endDate = new Date();
+            endDate.setDate(endDate.getDate() + (promo.daysFromNow || 7));
+            endDate.setHours(23, 59, 59, 999);
+            return endDate;
+        };
+
         const endDate = getEndDate();
 
         const calculateTimeLeft = (): TimeLeft => {
@@ -49,16 +86,17 @@ export default function PromoBanner() {
             };
         };
 
-        // Initial calculation
         setTimeLeft(calculateTimeLeft());
 
-        // Update every second
         const timer = setInterval(() => {
             setTimeLeft(calculateTimeLeft());
         }, 1000);
 
         return () => clearInterval(timer);
-    }, []);
+    }, [promo]);
+
+    // Don't render if disabled
+    if (!promo.enabled) return null;
 
     const TimeBlock = ({ value, label }: { value: number; label: string }) => (
         <div className="text-center">
@@ -85,10 +123,10 @@ export default function PromoBanner() {
                         {/* Left: Text */}
                         <div className="text-center lg:text-left">
                             <span className="inline-block px-3 py-1 rounded-full bg-white/20 text-white text-sm font-medium mb-3">
-                                🔥 Flash Sale
+                                {promo.title}
                             </span>
                             <h2 className="text-2xl lg:text-4xl font-bold text-white mb-2">
-                                ลดสูงสุด 50%
+                                {promo.subtitle}
                             </h2>
                             <p className="text-white/90 text-sm lg:text-base">
                                 แว่นตาแบรนด์ดังลดราคาเฉพาะช่วงนี้เท่านั้น!
@@ -115,7 +153,7 @@ export default function PromoBanner() {
                             className="bg-white text-primary hover:bg-white/90 rounded-full px-8 font-semibold"
                             asChild
                         >
-                            <Link href="/products">
+                            <Link href="/products?sale=true">
                                 ช้อปเลย
                                 <ArrowRight className="ml-2 h-4 w-4" />
                             </Link>

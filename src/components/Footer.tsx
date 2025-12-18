@@ -1,5 +1,9 @@
+"use client";
+
 import Link from "next/link";
+import Image from "next/image";
 import { Facebook, Instagram, MessageCircle, Mail, Phone, MapPin, CreditCard } from "lucide-react";
+import { useStoreConfig } from "@/context/StoreConfigContext";
 
 const footerLinks = {
   shop: [
@@ -33,6 +37,8 @@ const socialLinks = [
 const paymentMethods = ["VISA", "Mastercard", "PromptPay", "SCB", "TrueMoney"];
 
 export default function Footer() {
+  const { config } = useStoreConfig();
+
   return (
     <footer className="bg-foreground text-background">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -41,9 +47,20 @@ export default function Footer() {
           {/* Brand Column */}
           <div className="col-span-2 lg:col-span-1">
             <Link href="/" className="inline-block mb-4">
-              <span className="text-2xl font-bold">
-                The <span className="text-primary">Visionary</span>
-              </span>
+              {config.logo ? (
+                <Image src={config.logo} alt={config.siteName} width={120} height={40} className="h-8 w-auto object-contain" />
+              ) : (
+                <span className="text-2xl font-bold">
+                  {config.siteName.includes(" ") ? (
+                    <>
+                      {config.siteName.split(" ")[0]}{" "}
+                      <span className="text-primary">{config.siteName.split(" ").slice(1).join(" ")}</span>
+                    </>
+                  ) : (
+                    <span className="text-primary">{config.siteName}</span>
+                  )}
+                </span>
+              )}
             </Link>
             <p className="text-background/70 text-sm mb-6">
               ร้านแว่นตาพรีเมียม สำหรับผู้ที่มองโลกต่างออกไป
@@ -141,19 +158,19 @@ export default function Footer() {
             <ul className="space-y-3">
               <li className="flex items-start gap-3 text-background/70 text-sm">
                 <MapPin className="h-5 w-5 flex-shrink-0" />
-                <span>123 ถนนสุขุมวิท กรุงเทพฯ 10110</span>
+                <span>{config.address || "Bangkok, Thailand"}</span>
               </li>
               <li className="flex items-center gap-3 text-background/70 text-sm">
                 <Phone className="h-5 w-5 flex-shrink-0" />
-                <span>02-XXX-XXXX</span>
+                <span>{config.phone || "02-XXX-XXXX"}</span>
               </li>
               <li className="flex items-center gap-3 text-background/70 text-sm">
                 <MessageCircle className="h-5 w-5 flex-shrink-0" />
-                <span>LINE: @thevisionary</span>
+                <span>LINE: {config.lineId || "@thevisionary"}</span>
               </li>
               <li className="flex items-center gap-3 text-background/70 text-sm">
                 <Mail className="h-5 w-5 flex-shrink-0" />
-                <span>hello@thevisionary.co.th</span>
+                <span>{config.email || "contact@thevisionary.com"}</span>
               </li>
             </ul>
           </div>
@@ -162,7 +179,7 @@ export default function Footer() {
         {/* Bottom Bar */}
         <div className="border-t border-background/10 py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-background/60 text-sm">
-            © {new Date().getFullYear()} The Visionary. สงวนลิขสิทธิ์
+            © {new Date().getFullYear()} {config.siteName || "The Visionary"}. สงวนลิขสิทธิ์
           </p>
           <div className="flex items-center gap-6">
             <Link href="/privacy" className="text-background/60 hover:text-background text-sm transition-colors">

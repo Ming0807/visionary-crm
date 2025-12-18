@@ -50,6 +50,11 @@ export interface ProductVariant {
     created_at: string;
     updated_at: string;
     inventory?: Inventory[];
+    // Sale fields
+    is_on_sale?: boolean;
+    compare_at_price?: number | null;
+    sale_start_date?: string | null;
+    sale_end_date?: string | null;
 }
 
 export interface Inventory {

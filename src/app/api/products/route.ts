@@ -8,6 +8,7 @@ export async function GET(request: NextRequest) {
         const limit = parseInt(searchParams.get("limit") || "20");
         const search = searchParams.get("search") || "";
         const category = searchParams.get("category") || "";
+        const sale = searchParams.get("sale") === "true";
         const includeVariants = searchParams.get("variants") !== "false";
 
         const offset = (page - 1) * limit;
@@ -48,13 +49,32 @@ export async function GET(request: NextRequest) {
             );
         }
 
+        // Filter for sale products (check variant-level sale status with dates)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let filteredProducts = products as any;
+
+        if (sale && products) {
+            const now = new Date().toISOString();
+            filteredProducts = (products as any[])?.filter((product: any) => {
+                if (!product.variants || product.variants.length === 0) return false;
+                return product.variants.some((v: any) => {
+                    if (!v.is_on_sale) return false;
+                    const startOk = !v.sale_start_date || v.sale_start_date <= now;
+                    const endOk = !v.sale_end_date || v.sale_end_date >= now;
+                    return startOk && endOk;
+                });
+            }) || null;
+        }
+
+
+
         return NextResponse.json({
-            products,
+            products: sale ? filteredProducts : products,
             pagination: {
                 page,
                 limit,
-                total: count || 0,
-                totalPages: Math.ceil((count || 0) / limit),
+                total: sale ? (filteredProducts?.length || 0) : (count || 0),
+                totalPages: Math.ceil((sale ? (filteredProducts?.length || 0) : (count || 0)) / limit),
             }
         }, {
             headers: {

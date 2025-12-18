@@ -7,8 +7,15 @@ import { Button } from "@/components/ui/button";
 import { useCart } from "@/context/CartContext";
 import { Product, ProductVariant } from "@/lib/supabase";
 
+interface ExtendedVariant extends ProductVariant {
+  is_on_sale?: boolean;
+  compare_at_price?: number | null;
+  sale_start_date?: string | null;
+  sale_end_date?: string | null;
+}
+
 interface ProductCardProps {
-  product: Product & { variants?: ProductVariant[] };
+  product: Product & { variants?: ExtendedVariant[] };
 }
 
 export default function ProductCard({ product }: ProductCardProps) {
@@ -17,6 +24,21 @@ export default function ProductCard({ product }: ProductCardProps) {
   const defaultVariant = product.variants?.[0];
   const imageUrl = defaultVariant?.images?.[0] || "";
   const price = defaultVariant?.price || product.base_price;
+  
+  // Check if any variant is on sale (with date validation)
+  const now = new Date().toISOString();
+  const saleVariant = product.variants?.find((v) => {
+    if (!v.is_on_sale) return false;
+    const startOk = !v.sale_start_date || v.sale_start_date <= now;
+    const endOk = !v.sale_end_date || v.sale_end_date >= now;
+    return startOk && endOk && v.compare_at_price;
+  });
+  
+  const isOnSale = !!saleVariant;
+  const compareAtPrice = saleVariant?.compare_at_price;
+  const salePercentage = isOnSale && compareAtPrice && price
+    ? Math.round(((compareAtPrice - price) / compareAtPrice) * 100)
+    : 0;
   
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("th-TH", {
@@ -70,6 +92,13 @@ export default function ProductCard({ product }: ProductCardProps) {
             </div>
           )}
           
+          {/* Sale Badge */}
+          {isOnSale && (
+            <div className="absolute top-3 left-3 px-2.5 py-1 bg-red-500 text-white text-xs font-bold rounded-full shadow-lg">
+              SALE {salePercentage > 0 && `-${salePercentage}%`}
+            </div>
+          )}
+          
           {/* Quick Add Button */}
           <div className="absolute bottom-4 left-4 right-4 opacity-0 transform translate-y-4 transition-all group-hover:opacity-100 group-hover:translate-y-0">
             <Button 
@@ -97,29 +126,44 @@ export default function ProductCard({ product }: ProductCardProps) {
             {product.name}
           </h3>
           
-          {/* Color Swatches */}
-          {colors.length > 1 && (
-            <div className="flex items-center gap-1.5 mt-2">
-              {colors.slice(0, 4).map((color, index) => (
-                <span
-                  key={index}
-                  className="w-4 h-4 rounded-full border border-border"
-                  style={{ backgroundColor: color.code || "#ccc" }}
-                  title={color.name || ""}
-                />
-              ))}
-              {colors.length > 4 && (
-                <span className="text-xs text-muted-foreground">
-                  +{colors.length - 4}
-                </span>
-              )}
-            </div>
-          )}
+          {/* Color Swatches - Fixed height for consistent cards */}
+          <div className="h-6 mt-2 flex items-center">
+            {colors.length > 1 ? (
+              <div className="flex items-center gap-1.5">
+                {colors.slice(0, 4).map((color, index) => (
+                  <span
+                    key={index}
+                    className="w-4 h-4 rounded-full border border-border"
+                    style={{ backgroundColor: color.code || "#ccc" }}
+                    title={color.name || ""}
+                  />
+                ))}
+                {colors.length > 4 && (
+                  <span className="text-xs text-muted-foreground">
+                    +{colors.length - 4}
+                  </span>
+                )}
+              </div>
+            ) : null}
+          </div>
           
-          {/* Price */}
-          <p className="text-lg font-bold text-primary mt-2">
-            {formatPrice(price)}
-          </p>
+          {/* Price with Sale Display */}
+          <div className="mt-2 flex items-center gap-2">
+            {isOnSale && compareAtPrice ? (
+              <>
+                <p className="text-lg font-bold text-red-500">
+                  {formatPrice(price)}
+                </p>
+                <p className="text-sm text-muted-foreground line-through">
+                  {formatPrice(compareAtPrice)}
+                </p>
+              </>
+            ) : (
+              <p className="text-lg font-bold text-primary">
+                {formatPrice(price)}
+              </p>
+            )}
+          </div>
         </div>
       </div>
     </Link>

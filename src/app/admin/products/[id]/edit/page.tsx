@@ -41,6 +41,11 @@ interface VariantForm {
   sizeLabel: string;
   images: string[];
   stock: string;
+  // Sale fields
+  isOnSale: boolean;
+  compareAtPrice: string;
+  saleStartDate: string;
+  saleEndDate: string;
 }
 
 const categories = ["Sunglasses", "Eyeglasses", "Lenses", "Accessories"];
@@ -83,6 +88,10 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
             frame_material,
             size_label,
             images,
+            is_on_sale,
+            compare_at_price,
+            sale_start_date,
+            sale_end_date,
             inventory(quantity)
           )
         `)
@@ -116,19 +125,41 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           size_label: string;
           images: string[];
           inventory: { quantity: number }[];
-        }) => ({
-          id: crypto.randomUUID(),
-          dbId: v.id,
-          colorName: v.color_name || "",
-          colorCode: v.color_code || "#000000",
-          sku: v.sku || "",
-          price: v.price?.toString() || "",
-          costPrice: v.cost_price?.toString() || "",
-          frameMaterial: v.frame_material || "",
-          sizeLabel: v.size_label || "",
-          images: v.images || [],
-          stock: v.inventory?.[0]?.quantity?.toString() || "0",
-        })) || []
+          is_on_sale?: boolean;
+          compare_at_price?: number | null;
+          sale_start_date?: string | null;
+          sale_end_date?: string | null;
+        }) => {
+          // Convert ISO datetime to datetime-local format (YYYY-MM-DDTHH:mm)
+          const formatDateForInput = (isoDate: string | null | undefined) => {
+            if (!isoDate) return "";
+            try {
+              const date = new Date(isoDate);
+              // Format as YYYY-MM-DDTHH:mm for datetime-local input
+              return date.toISOString().slice(0, 16);
+            } catch {
+              return "";
+            }
+          };
+
+          return {
+            id: crypto.randomUUID(),
+            dbId: v.id,
+            colorName: v.color_name || "",
+            colorCode: v.color_code || "#000000",
+            sku: v.sku || "",
+            price: v.price?.toString() || "",
+            costPrice: v.cost_price?.toString() || "",
+            frameMaterial: v.frame_material || "",
+            sizeLabel: v.size_label || "",
+            images: v.images || [],
+            stock: v.inventory?.[0]?.quantity?.toString() || "0",
+            isOnSale: v.is_on_sale || false,
+            compareAtPrice: v.compare_at_price?.toString() || "",
+            saleStartDate: formatDateForInput(v.sale_start_date),
+            saleEndDate: formatDateForInput(v.sale_end_date),
+          };
+        }) || []
       );
 
       setIsLoading(false);
@@ -167,6 +198,10 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
         sizeLabel: "",
         images: [],
         stock: "10",
+        isOnSale: false,
+        compareAtPrice: "",
+        saleStartDate: "",
+        saleEndDate: "",
       },
     ]);
   };
@@ -209,6 +244,16 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
 
       // Update/Create variants
       for (const variant of variants) {
+        // Format datetime-local to ISO string for PostgreSQL
+        const formatDatetime = (dt: string) => {
+          if (!dt) return null;
+          try {
+            return new Date(dt).toISOString();
+          } catch {
+            return null;
+          }
+        };
+
         const variantData = {
           product_id: resolvedParams.id,
           sku: variant.sku,
@@ -219,14 +264,22 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           frame_material: variant.frameMaterial,
           size_label: variant.sizeLabel,
           images: variant.images,
+          is_on_sale: variant.isOnSale,
+          compare_at_price: variant.compareAtPrice ? parseFloat(variant.compareAtPrice) : null,
+          sale_start_date: formatDatetime(variant.saleStartDate),
+          sale_end_date: formatDatetime(variant.saleEndDate),
         };
+
+        console.log("Saving variant:", variant.sku, "Sale:", variant.isOnSale, "Data:", variantData);
 
         if (variant.dbId) {
           // Update existing variant
-          await supabase
+          const { error } = await supabase
             .from("product_variants")
             .update(variantData)
             .eq("id", variant.dbId);
+          
+          if (error) console.error("Update variant error:", error);
 
           // Update inventory
           await supabase
@@ -505,6 +558,65 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                   onChange={(imgs) => handleVariantImages(variant.id, imgs)}
                   maxImages={5}
                 />
+              </div>
+
+              {/* Sale Settings */}
+              <div className="mt-4 p-4 bg-orange-50 dark:bg-orange-950/20 rounded-lg border border-orange-200 dark:border-orange-900">
+                <div className="flex items-center gap-3 mb-3">
+                  <input
+                    type="checkbox"
+                    id={`sale-${variant.id}`}
+                    checked={variant.isOnSale}
+                    onChange={(e) =>
+                      setVariants((prev) =>
+                        prev.map((v) => (v.id === variant.id ? { ...v, isOnSale: e.target.checked } : v))
+                      )
+                    }
+                    className="w-4 h-4 rounded"
+                  />
+                  <Label htmlFor={`sale-${variant.id}`} className="text-orange-700 dark:text-orange-300 font-medium">
+                    🏷️ On Sale
+                  </Label>
+                </div>
+                
+                {variant.isOnSale && (
+                  <div className="grid sm:grid-cols-3 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Compare Price (Original)</Label>
+                      <Input
+                        type="number"
+                        value={variant.compareAtPrice}
+                        onChange={(e) =>
+                          handleVariantChange(variant.id, "compareAtPrice", e.target.value)
+                        }
+                        placeholder="3500"
+                        className="bg-white dark:bg-background"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Start Date</Label>
+                      <Input
+                        type="datetime-local"
+                        value={variant.saleStartDate}
+                        onChange={(e) =>
+                          handleVariantChange(variant.id, "saleStartDate", e.target.value)
+                        }
+                        className="bg-white dark:bg-background"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">End Date</Label>
+                      <Input
+                        type="datetime-local"
+                        value={variant.saleEndDate}
+                        onChange={(e) =>
+                          handleVariantChange(variant.id, "saleEndDate", e.target.value)
+                        }
+                        className="bg-white dark:bg-background"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           ))}
