@@ -157,7 +157,7 @@ export default function AnalyticsCharts() {
                 <Card className="p-6">
                     <h3 className="font-semibold mb-4">รายได้ 7 วันย้อนหลัง</h3>
                     <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={200}>
                             <LineChart data={data.revenueTrend}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                                 <XAxis 
@@ -191,7 +191,7 @@ export default function AnalyticsCharts() {
                 <Card className="p-6">
                     <h3 className="font-semibold mb-4">สถานะออเดอร์</h3>
                     <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={200}>
                             <PieChart>
                                 <Pie
                                     data={data.ordersByStatus}
@@ -223,7 +223,7 @@ export default function AnalyticsCharts() {
                 <Card className="p-6">
                     <h3 className="font-semibold mb-4">ระดับลูกค้า</h3>
                     <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={200}>
                             <BarChart data={data.customersByTier} layout="vertical">
                                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                                 <XAxis type="number" stroke="#9ca3af" fontSize={12} />
@@ -252,7 +252,7 @@ export default function AnalyticsCharts() {
                 <Card className="p-6">
                     <h3 className="font-semibold mb-4">สินค้าขายดี</h3>
                     <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={200}>
                             <BarChart data={data.topProducts} layout="vertical">
                                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                                 <XAxis type="number" stroke="#9ca3af" fontSize={12} />
