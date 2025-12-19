@@ -146,6 +146,7 @@ CREATE TABLE public.customers (
   segment character varying DEFAULT 'new'::character varying,
   last_order_at timestamp with time zone,
   last_message_at timestamp with time zone,
+  password_hash text,
   CONSTRAINT customers_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.inventory (

@@ -109,13 +109,13 @@ export default function AccountPage() {
                     <Card className="p-6">
                         <div className="flex items-center gap-4">
                             <div className="relative">
-                                {profile?.pictureUrl ? (
+                                {(customer.profileImageUrl || profile?.pictureUrl) ? (
                                     <Image
-                                        src={profile.pictureUrl}
-                                        alt={profile.displayName}
+                                        src={customer.profileImageUrl || profile?.pictureUrl || ""}
+                                        alt={customer.name || profile?.displayName || "Profile"}
                                         width={80}
                                         height={80}
-                                        className="rounded-full"
+                                        className="rounded-full object-cover"
                                     />
                                 ) : (
                                     <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">

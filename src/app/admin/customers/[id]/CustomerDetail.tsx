@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { 
@@ -21,7 +21,11 @@ import {
   Minus,
   Cake,
   Calendar,
-  AlertTriangle
+  AlertTriangle,
+  TrendingUp,
+  Crown,
+  RefreshCw,
+  ChevronRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -104,15 +108,15 @@ export default function CustomerDetail({ customer }: CustomerDetailProps) {
   const [isAdjusting, setIsAdjusting] = useState(false);
   const [customerPoints, setCustomerPoints] = useState(customer.points || 0);
 
-  const formatPrice = (price: number) => {
+  const formatPrice = useCallback((price: number) => {
     return new Intl.NumberFormat("th-TH", {
       style: "currency",
       currency: "THB",
       minimumFractionDigits: 0,
     }).format(price);
-  };
+  }, []);
 
-  const formatDate = (date: string) => {
+  const formatDate = useCallback((date: string) => {
     return new Date(date).toLocaleDateString("th-TH", {
       year: "numeric",
       month: "short",
@@ -120,249 +124,296 @@ export default function CustomerDetail({ customer }: CustomerDetailProps) {
       hour: "2-digit",
       minute: "2-digit",
     });
-  };
+  }, []);
 
-  const getStatusColor = (status: string) => {
-    const colors: Record<string, string> = {
-      paid: "bg-green-100 text-green-700",
-      pending_payment: "bg-yellow-100 text-yellow-700",
-      cancelled: "bg-red-100 text-red-700",
-      delivered: "bg-blue-100 text-blue-700",
-      shipped: "bg-purple-100 text-purple-700",
+  const formatShortDate = useCallback((date: string) => {
+    return new Date(date).toLocaleDateString("th-TH", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  }, []);
+
+  const getPaymentStatusColor = useCallback((status: string) => {
+    const colors: Record<string, { bg: string; text: string; dot: string }> = {
+      paid: { bg: "bg-emerald-50", text: "text-emerald-700", dot: "bg-emerald-500" },
+      pending_payment: { bg: "bg-amber-50", text: "text-amber-700", dot: "bg-amber-500" },
+      verifying: { bg: "bg-blue-50", text: "text-blue-700", dot: "bg-blue-500" },
+      cancelled: { bg: "bg-red-50", text: "text-red-700", dot: "bg-red-500" },
+      refunded: { bg: "bg-slate-100", text: "text-slate-700", dot: "bg-slate-500" },
     };
-    return colors[status] || "bg-gray-100 text-gray-700";
-  };
+    return colors[status] || { bg: "bg-slate-100", text: "text-slate-700", dot: "bg-slate-400" };
+  }, []);
 
-  const getBehaviorIcon = (type: string) => {
+  const getBehaviorIcon = useCallback((type: string) => {
     switch (type) {
       case "view": return <Eye className="h-4 w-4" />;
       case "wishlist_add": return <Heart className="h-4 w-4" />;
       case "cart_abandon": return <ShoppingCart className="h-4 w-4" />;
       default: return <Eye className="h-4 w-4" />;
     }
-  };
+  }, []);
 
-  // Calculate tier progress (matching schema_phase4.sql)
-  const tierThresholds = { member: 0, vip: 10001, platinum: 50001 };
-  const currentTierThreshold = tierThresholds[customer.tier as keyof typeof tierThresholds] || 0;
-  const nextTiers = Object.entries(tierThresholds).filter(([_, val]) => val > currentTierThreshold);
-  const nextTier = nextTiers[0];
-  const progress = nextTier 
-    ? Math.min(100, ((customer.total_spent - currentTierThreshold) / (nextTier[1] - currentTierThreshold)) * 100)
-    : 100;
+  // Calculate tier progress
+  const { nextTier, progress } = useMemo(() => {
+    const tierThresholds = { member: 0, vip: 10001, platinum: 50001 };
+    const currentTierThreshold = tierThresholds[customer.tier as keyof typeof tierThresholds] || 0;
+    const nextTiers = Object.entries(tierThresholds).filter(([_, val]) => val > currentTierThreshold);
+    const next = nextTiers[0];
+    const prog = next 
+      ? Math.min(100, ((customer.total_spent - currentTierThreshold) / (next[1] - currentTierThreshold)) * 100)
+      : 100;
+    return { nextTier: next, progress: prog };
+  }, [customer.tier, customer.total_spent]);
+
+  // Birthday check
+  const birthdayStatus = useMemo(() => {
+    if (!customer.birthday) return null;
+    const birthday = new Date(customer.birthday);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    birthday.setFullYear(today.getFullYear());
+    birthday.setHours(0, 0, 0, 0);
+    const diffDays = Math.round((birthday.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    if (diffDays === 0) return "today";
+    if (diffDays > 0 && diffDays <= 7) return diffDays;
+    return null;
+  }, [customer.birthday]);
+
+  // Extract profile picture - check profile_image_url first, then social_identities
+  const profilePicture = useMemo(() => {
+    // Priority 1: Direct profile_image_url column
+    if ((customer as any).profile_image_url) return (customer as any).profile_image_url;
+    
+    // Priority 2: social_identities profile_data
+    if (!customer.social_identities?.length) return null;
+    for (const identity of customer.social_identities) {
+      const data = identity.profile_data as Record<string, any>;
+      if (data?.pictureUrl) return data.pictureUrl; // LINE
+      if (data?.picture) return data.picture; // Facebook
+      if (data?.avatar_url) return data.avatar_url; // Generic
+    }
+    return null;
+  }, [customer]);
 
   return (
-    <div className="p-6 lg:p-8">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto">
       {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
-        <Button variant="ghost" size="icon" asChild>
+      <div className="flex items-center gap-3 sm:gap-4 mb-6">
+        <Button variant="ghost" size="icon" asChild className="flex-shrink-0">
           <Link href="/admin/customers">
             <ArrowLeft className="h-5 w-5" />
           </Link>
         </Button>
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">
-            {customer.name || "Unknown Customer"}
-          </h1>
-          <p className="text-muted-foreground">Customer ID: {customer.id.slice(0, 8)}...</p>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="text-xl sm:text-2xl font-bold text-foreground truncate">
+              {customer.name || "ลูกค้าไม่ระบุชื่อ"}
+            </h1>
+            <TierBadge tier={customer.tier} />
+          </div>
+          <p className="text-sm text-muted-foreground">
+            ID: {customer.id.slice(0, 8)}... • สมัครเมื่อ {formatShortDate(customer.created_at)}
+          </p>
+        </div>
+      </div>
+
+      {/* Stats Overview - Mobile First */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        {/* Total Spent */}
+        <div className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-950/30 dark:to-emerald-900/20 rounded-xl p-3 sm:p-4 border border-emerald-200/50">
+          <div className="flex items-center gap-2 mb-1">
+            <TrendingUp className="h-4 w-4 text-emerald-600" />
+            <span className="text-xs text-emerald-700 dark:text-emerald-300 font-medium">ยอดซื้อรวม</span>
+          </div>
+          <p className="text-lg sm:text-xl font-bold text-emerald-800 dark:text-emerald-200">
+            {formatPrice(customer.total_spent || 0)}
+          </p>
+        </div>
+
+        {/* Orders */}
+        <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-950/30 dark:to-blue-900/20 rounded-xl p-3 sm:p-4 border border-blue-200/50">
+          <div className="flex items-center gap-2 mb-1">
+            <ShoppingBag className="h-4 w-4 text-blue-600" />
+            <span className="text-xs text-blue-700 dark:text-blue-300 font-medium">ออเดอร์</span>
+          </div>
+          <p className="text-lg sm:text-xl font-bold text-blue-800 dark:text-blue-200">
+            {customer.purchase_count || 0}
+          </p>
+        </div>
+
+        {/* Points */}
+        <div className="bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-950/30 dark:to-amber-900/20 rounded-xl p-3 sm:p-4 border border-amber-200/50">
+          <div className="flex items-center gap-2 mb-1">
+            <Star className="h-4 w-4 text-amber-600" />
+            <span className="text-xs text-amber-700 dark:text-amber-300 font-medium">แต้มสะสม</span>
+          </div>
+          <p className="text-lg sm:text-xl font-bold text-amber-800 dark:text-amber-200">
+            {customerPoints.toLocaleString()}
+          </p>
+        </div>
+
+        {/* Tier Progress */}
+        <div className="bg-gradient-to-br from-violet-50 to-violet-100/50 dark:from-violet-950/30 dark:to-violet-900/20 rounded-xl p-3 sm:p-4 border border-violet-200/50">
+          <div className="flex items-center gap-2 mb-1">
+            <Crown className="h-4 w-4 text-violet-600" />
+            <span className="text-xs text-violet-700 dark:text-violet-300 font-medium">
+              {nextTier ? `ถึง ${nextTier[0]}` : "Max Tier"}
+            </span>
+          </div>
+          {nextTier ? (
+            <div className="space-y-1.5">
+              <div className="h-2 bg-violet-200/50 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-violet-500 rounded-full transition-all"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+              <p className="text-xs text-violet-600">{formatPrice(nextTier[1] - customer.total_spent)}</p>
+            </div>
+          ) : (
+            <p className="text-sm font-bold text-violet-800">🎉 Platinum</p>
+          )}
         </div>
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Left Column - Profile */}
-        <div className="space-y-6">
-          {/* Profile Card */}
-          <Card className="p-6">
-            <div className="flex items-start justify-between mb-4">
-              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                <User className="h-8 w-8 text-primary" />
+        <div className="space-y-4">
+          {/* Contact Info Card */}
+          <Card className="p-4 sm:p-5">
+            <div className="flex items-start gap-4 mb-4">
+              {profilePicture ? (
+                <img
+                  src={profilePicture}
+                  alt={customer.name || "Profile"}
+                  className="h-14 w-14 rounded-full object-cover flex-shrink-0 ring-2 ring-primary/20"
+                />
+              ) : (
+                <div className="h-14 w-14 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center flex-shrink-0">
+                  <span className="text-xl font-bold text-primary">
+                    {(customer.name || "?").charAt(0).toUpperCase()}
+                  </span>
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <h2 className="text-lg font-semibold truncate">{customer.name || "ไม่ระบุชื่อ"}</h2>
+                <RFMBadge segment={customer.rfm_segment} score={customer.rfm_score} />
               </div>
-              <TierBadge tier={customer.tier} size="md" />
             </div>
-
-            <h2 className="text-xl font-semibold mb-4">{customer.name || "Unknown"}</h2>
 
             <div className="space-y-3">
               <div className="flex items-center gap-3 text-sm">
-                <Phone className="h-4 w-4 text-muted-foreground" />
+                <div className="p-2 rounded-lg bg-muted">
+                  <Phone className="h-4 w-4 text-muted-foreground" />
+                </div>
                 <span>{customer.phone || "-"}</span>
               </div>
               <div className="flex items-center gap-3 text-sm">
-                <Mail className="h-4 w-4 text-muted-foreground" />
-                <span>{customer.email || "-"}</span>
-              </div>
-              {customer.address && Object.keys(customer.address).length > 0 && (
-                <div className="flex items-start gap-3 text-sm">
-                  <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
-                  <span>{JSON.stringify(customer.address)}</span>
+                <div className="p-2 rounded-lg bg-muted">
+                  <Mail className="h-4 w-4 text-muted-foreground" />
                 </div>
-              )}
+                <span className="truncate">{customer.email || "-"}</span>
+              </div>
               {customer.birthday && (
                 <div className="flex items-center gap-3 text-sm">
-                  <Cake className="h-4 w-4 text-muted-foreground" />
+                  <div className="p-2 rounded-lg bg-pink-50">
+                    <Cake className="h-4 w-4 text-pink-500" />
+                  </div>
                   <span>
                     {new Date(customer.birthday).toLocaleDateString("th-TH", { day: "numeric", month: "short" })}
-                    {/* Check if birthday is within next 7 days */}
-                    {(() => {
-                      const birthday = new Date(customer.birthday);
-                      const today = new Date();
-                      // Reset both to midnight for accurate day comparison
-                      today.setHours(0, 0, 0, 0);
-                      birthday.setFullYear(today.getFullYear());
-                      birthday.setHours(0, 0, 0, 0);
-                      const diffDays = Math.round((birthday.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-                      if (diffDays === 0) {
-                        return <Badge className="ml-2 bg-pink-500 text-white">🎉 วันนี้!</Badge>;
-                      } else if (diffDays > 0 && diffDays <= 7) {
-                        return <Badge className="ml-2 bg-pink-100 text-pink-700">🎂 อีก {diffDays} วัน</Badge>;
-                      }
-                      return null;
-                    })()}
+                    {birthdayStatus === "today" && (
+                      <Badge className="ml-2 bg-pink-500 text-white text-xs">🎉 วันนี้!</Badge>
+                    )}
+                    {typeof birthdayStatus === "number" && (
+                      <Badge className="ml-2 bg-pink-100 text-pink-700 text-xs">🎂 อีก {birthdayStatus} วัน</Badge>
+                    )}
                   </span>
                 </div>
               )}
               {customer.join_date && (
-                <div className="flex items-center gap-3 text-sm">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-muted-foreground">
-                    Member since {new Date(customer.join_date).toLocaleDateString("th-TH", { year: "numeric", month: "short" })}
+                <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                  <div className="p-2 rounded-lg bg-muted">
+                    <Calendar className="h-4 w-4" />
+                  </div>
+                  <span>
+                    สมาชิกตั้งแต่ {new Date(customer.join_date).toLocaleDateString("th-TH", { year: "numeric", month: "short" })}
                   </span>
                 </div>
               )}
             </div>
 
-            {/* Customer Segment Badge */}
+            {/* Customer Segment */}
             {customer.segment && (
-              <div className="mt-4 p-3 rounded-lg bg-muted/50">
-                <div className="flex items-center gap-2">
-                  {customer.segment === "champion" && <Star className="h-4 w-4 text-yellow-500" />}
-                  {customer.segment === "at_risk" && <AlertTriangle className="h-4 w-4 text-orange-500" />}
-                  {customer.segment === "lost" && <AlertTriangle className="h-4 w-4 text-red-500" />}
-                  {customer.segment === "new" && <Gift className="h-4 w-4 text-green-500" />}
-                  {customer.segment === "loyal" && <Heart className="h-4 w-4 text-pink-500" />}
-                  {customer.segment === "promising" && <ShoppingCart className="h-4 w-4 text-blue-500" />}
-                  <span className="text-sm font-medium capitalize">{customer.segment.replace("_", " ")}</span>
-                  <Badge 
-                    variant="outline" 
-                    className={
-                      customer.segment === "champion" ? "bg-yellow-50 text-yellow-700 border-yellow-200" :
-                      customer.segment === "at_risk" ? "bg-orange-50 text-orange-700 border-orange-200" :
-                      customer.segment === "lost" ? "bg-red-50 text-red-700 border-red-200" :
-                      customer.segment === "loyal" ? "bg-pink-50 text-pink-700 border-pink-200" :
-                      customer.segment === "new" ? "bg-green-50 text-green-700 border-green-200" :
-                      "bg-blue-50 text-blue-700 border-blue-200"
-                    }
-                  >
-                    Segment
-                  </Badge>
+              <>
+                <Separator className="my-4" />
+                <div className="p-3 rounded-lg bg-muted/50">
+                  <div className="flex items-center gap-2">
+                    {customer.segment === "champion" && <Star className="h-4 w-4 text-yellow-500" />}
+                    {customer.segment === "at_risk" && <AlertTriangle className="h-4 w-4 text-orange-500" />}
+                    {customer.segment === "lost" && <AlertTriangle className="h-4 w-4 text-red-500" />}
+                    {customer.segment === "new" && <Gift className="h-4 w-4 text-green-500" />}
+                    {customer.segment === "loyal" && <Heart className="h-4 w-4 text-pink-500" />}
+                    {customer.segment === "promising" && <ShoppingCart className="h-4 w-4 text-blue-500" />}
+                    <span className="text-sm font-medium capitalize">{customer.segment.replace("_", " ")}</span>
+                  </div>
+                  {customer.segment === "at_risk" && (
+                    <p className="text-xs text-orange-600 mt-1">⚠️ ไม่มีกิจกรรมมากกว่า 60 วัน</p>
+                  )}
+                  {customer.segment === "lost" && (
+                    <p className="text-xs text-red-600 mt-1">⚠️ หายไปมากกว่า 180 วัน - ควร win-back</p>
+                  )}
                 </div>
-                {customer.segment === "at_risk" && (
-                  <p className="text-xs text-orange-600 mt-1">⚠️ ลูกค้าไม่มีกิจกรรมมากกว่า 60 วัน</p>
-                )}
-                {customer.segment === "lost" && (
-                  <p className="text-xs text-red-600 mt-1">⚠️ ลูกค้าหายไปมากกว่า 180 วัน - ควร win-back</p>
-                )}
-              </div>
+              </>
             )}
-
-            <Separator className="my-4" />
 
             {/* Social Identities */}
             {customer.social_identities.length > 0 && (
-              <div className="mb-4">
-                <h4 className="text-sm font-medium mb-2">Connected Accounts</h4>
-                <div className="flex flex-wrap gap-2">
-                  {customer.social_identities.map((identity, idx) => (
-                    <Badge key={idx} variant="secondary">
-                      {identity.platform}
-                    </Badge>
-                  ))}
+              <>
+                <Separator className="my-4" />
+                <div>
+                  <h4 className="text-sm font-medium mb-2">บัญชีที่เชื่อมต่อ</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {customer.social_identities.map((identity, idx) => (
+                      <Badge key={idx} variant="secondary" className="capitalize">
+                        {identity.platform}
+                      </Badge>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              </>
             )}
 
             {/* Style Tags */}
             {customer.style_tags && customer.style_tags.length > 0 && (
-              <div>
-                <h4 className="text-sm font-medium mb-2">Style Preferences</h4>
-                <div className="flex flex-wrap gap-2">
-                  {customer.style_tags.map((tag) => (
-                    <Badge key={tag} variant="outline">
-                      {tag}
-                    </Badge>
-                  ))}
+              <>
+                <Separator className="my-4" />
+                <div>
+                  <h4 className="text-sm font-medium mb-2">Style Preferences</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {customer.style_tags.map((tag) => (
+                      <Badge key={tag} variant="outline">
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              </>
             )}
           </Card>
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-2 gap-4">
-            <Card className="p-4 text-center">
-              <ShoppingBag className="h-6 w-6 mx-auto text-primary mb-2" />
-              <p className="text-2xl font-bold">{customer.purchase_count || 0}</p>
-              <p className="text-xs text-muted-foreground">Orders</p>
-            </Card>
-            <Card className="p-4 text-center">
-              <Star className="h-6 w-6 mx-auto text-yellow-500 mb-2" />
-              <p className="text-2xl font-bold">{customer.points?.toLocaleString() || 0}</p>
-              <p className="text-xs text-muted-foreground">Points</p>
-            </Card>
-          </div>
-
-          {/* Total Spent */}
-          <Card className="p-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-muted-foreground">Total Spent</span>
-              <span className="text-lg font-bold text-primary">
-                {formatPrice(customer.total_spent || 0)}
-              </span>
-            </div>
-            
-            {/* Tier Progress */}
-            {nextTier && (
-              <div className="mt-3">
-                <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                  <span>{customer.tier}</span>
-                  <span>{nextTier[0]}</span>
-                </div>
-                <div className="h-2 bg-muted rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-primary rounded-full transition-all"
-                    style={{ width: `${progress}%` }}
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {formatPrice(nextTier[1] - customer.total_spent)} more to {nextTier[0]}
-                </p>
-              </div>
-            )}
-          </Card>
-
-          {/* RFM Segment */}
-          <Card className="p-4">
-            <h4 className="text-sm font-medium mb-3">RFM Analysis</h4>
-            <div className="flex items-center gap-3">
-              <RFMBadge segment={customer.rfm_segment} score={customer.rfm_score} showScore size="md" />
-            </div>
-            {customer.last_purchase_at && (
-              <p className="text-xs text-muted-foreground mt-2">
-                Last purchase: {formatDate(customer.last_purchase_at)}
-              </p>
-            )}
-          </Card>
-
-          {/* Notes */}
+          {/* Notes Card */}
           <Card className="p-4">
             <h4 className="text-sm font-medium mb-2">Admin Notes</h4>
             <Textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Add private notes about this customer..."
+              placeholder="บันทึกส่วนตัวเกี่ยวกับลูกค้า..."
               rows={3}
+              className="text-sm"
             />
             <Button size="sm" className="mt-2" variant="outline">
-              Save Notes
+              บันทึก
             </Button>
           </Card>
         </div>
@@ -370,22 +421,22 @@ export default function CustomerDetail({ customer }: CustomerDetailProps) {
         {/* Right Column - Tabs */}
         <div className="lg:col-span-2">
           <Tabs defaultValue="orders" className="w-full">
-            <TabsList className="grid grid-cols-4 w-full">
-              <TabsTrigger value="orders" className="gap-2">
+            <TabsList className="grid grid-cols-4 w-full h-auto p-1">
+              <TabsTrigger value="orders" className="gap-1.5 text-xs sm:text-sm py-2">
                 <ShoppingBag className="h-4 w-4" />
-                Orders
+                <span className="hidden sm:inline">ออเดอร์</span>
               </TabsTrigger>
-              <TabsTrigger value="points" className="gap-2">
+              <TabsTrigger value="points" className="gap-1.5 text-xs sm:text-sm py-2">
                 <Gift className="h-4 w-4" />
-                Points
+                <span className="hidden sm:inline">แต้ม</span>
               </TabsTrigger>
-              <TabsTrigger value="behavior" className="gap-2">
+              <TabsTrigger value="behavior" className="gap-1.5 text-xs sm:text-sm py-2">
                 <Eye className="h-4 w-4" />
-                Behavior
+                <span className="hidden sm:inline">พฤติกรรม</span>
               </TabsTrigger>
-              <TabsTrigger value="claims" className="gap-2">
+              <TabsTrigger value="claims" className="gap-1.5 text-xs sm:text-sm py-2">
                 <FileText className="h-4 w-4" />
-                Claims
+                <span className="hidden sm:inline">เคลม</span>
               </TabsTrigger>
             </TabsList>
 
@@ -393,35 +444,41 @@ export default function CustomerDetail({ customer }: CustomerDetailProps) {
             <TabsContent value="orders" className="mt-4">
               <Card className="p-4">
                 {customer.orders.length > 0 ? (
-                  <div className="space-y-4">
-                    {customer.orders.map((order) => (
-                      <div key={order.id} className="flex items-center justify-between p-4 bg-muted/50 rounded-xl">
-                        <div>
-                          <Link 
-                            href={`/admin/orders/${order.id}`}
-                            className="font-medium hover:text-primary"
-                          >
-                            {order.order_number}
-                          </Link>
-                          <p className="text-sm text-muted-foreground">
-                            {formatDate(order.created_at)}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {order.items?.length || 0} items
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-bold">{formatPrice(order.total_amount)}</p>
-                          <Badge className={getStatusColor(order.payment_status)}>
-                            {order.payment_status.replace("_", " ")}
-                          </Badge>
-                        </div>
-                      </div>
-                    ))}
+                  <div className="space-y-3">
+                    {customer.orders.map((order) => {
+                      const statusColors = getPaymentStatusColor(order.payment_status);
+                      return (
+                        <Link
+                          key={order.id}
+                          href={`/admin/orders/${order.id}`}
+                          className="flex items-center justify-between p-3 sm:p-4 bg-muted/50 rounded-xl hover:bg-muted transition-colors group"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono font-medium text-sm group-hover:text-primary transition-colors">
+                                {order.order_number}
+                              </span>
+                              <Badge className={`${statusColors.bg} ${statusColors.text} gap-1 text-xs`}>
+                                <span className={`h-1.5 w-1.5 rounded-full ${statusColors.dot}`} />
+                                {order.payment_status.replace("_", " ")}
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {formatShortDate(order.created_at)} • {order.items?.length || 0} รายการ
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-sm sm:text-base">{formatPrice(order.total_amount)}</span>
+                            <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                          </div>
+                        </Link>
+                      );
+                    })}
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    No orders yet
+                  <div className="text-center py-12 text-muted-foreground">
+                    <ShoppingBag className="h-10 w-10 mx-auto mb-3 opacity-50" />
+                    <p>ยังไม่มีคำสั่งซื้อ</p>
                   </div>
                 )}
               </Card>
@@ -431,14 +488,18 @@ export default function CustomerDetail({ customer }: CustomerDetailProps) {
             <TabsContent value="points" className="mt-4">
               <Card className="p-4">
                 {/* Point Adjustment Section */}
-                <div className="mb-6 p-4 bg-muted/50 rounded-xl">
-                  <h4 className="font-medium mb-3">Adjust Points</h4>
-                  <div className="flex items-center gap-3">
+                <div className="mb-6 p-4 bg-gradient-to-br from-amber-50 to-amber-100/30 dark:from-amber-950/20 dark:to-amber-900/10 rounded-xl border border-amber-200/50">
+                  <h4 className="font-medium mb-3 flex items-center gap-2">
+                    <Star className="h-4 w-4 text-amber-500" />
+                    ปรับแต้ม
+                  </h4>
+                  <div className="flex flex-wrap items-center gap-3">
                     <Button
                       size="icon"
                       variant="outline"
                       onClick={() => setAdjustAmount(Math.max(-1000, adjustAmount - 100))}
                       disabled={isAdjusting}
+                      className="h-10 w-10"
                     >
                       <Minus className="h-4 w-4" />
                     </Button>
@@ -446,13 +507,14 @@ export default function CustomerDetail({ customer }: CustomerDetailProps) {
                       type="number"
                       value={adjustAmount}
                       onChange={(e) => setAdjustAmount(parseInt(e.target.value) || 0)}
-                      className="w-24 text-center text-lg font-bold border rounded-lg p-2"
+                      className="w-24 text-center text-lg font-bold border rounded-lg p-2 bg-background"
                     />
                     <Button
                       size="icon"
                       variant="outline"
                       onClick={() => setAdjustAmount(Math.min(1000, adjustAmount + 100))}
                       disabled={isAdjusting}
+                      className="h-10 w-10"
                     >
                       <Plus className="h-4 w-4" />
                     </Button>
@@ -474,7 +536,7 @@ export default function CustomerDetail({ customer }: CustomerDetailProps) {
                             const data = await res.json();
                             setCustomerPoints(data.newPoints);
                             setAdjustAmount(0);
-                            alert(`Points updated! New balance: ${data.newPoints}`);
+                            alert(`อัปเดตแล้ว! แต้มใหม่: ${data.newPoints}`);
                           }
                         } catch (error) {
                           console.error(error);
@@ -482,37 +544,39 @@ export default function CustomerDetail({ customer }: CustomerDetailProps) {
                           setIsAdjusting(false);
                         }
                       }}
+                      className="gap-2"
                     >
-                      {isAdjusting ? "Saving..." : "Apply"}
+                      {isAdjusting ? "กำลังบันทึก..." : "ยืนยัน"}
                     </Button>
                   </div>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Current balance: <span className="font-bold text-foreground">{customerPoints.toLocaleString()}</span> points
+                  <p className="text-sm text-amber-700 dark:text-amber-300 mt-3">
+                    แต้มปัจจุบัน: <span className="font-bold">{customerPoints.toLocaleString()}</span>
                   </p>
                 </div>
 
                 {/* Transaction History */}
                 {customer.pointTransactions.length > 0 ? (
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     {customer.pointTransactions.map((tx) => (
-                      <div key={tx.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                      <div key={tx.id} className="flex items-center justify-between py-3 border-b border-border last:border-0">
                         <div>
                           <p className="font-medium text-sm">
                             {(tx.reason || "transaction").replace(/_/g, " ").toUpperCase()}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            {formatDate(tx.created_at)}
+                            {formatShortDate(tx.created_at)}
                           </p>
                         </div>
-                        <span className={`font-bold ${tx.amount > 0 ? "text-green-600" : "text-red-600"}`}>
-                          {tx.amount > 0 ? "+" : ""}{tx.amount}
+                        <span className={`font-bold tabular-nums ${tx.amount > 0 ? "text-emerald-600" : "text-red-600"}`}>
+                          {tx.amount > 0 ? "+" : ""}{tx.amount.toLocaleString()}
                         </span>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    No point transactions yet
+                  <div className="text-center py-12 text-muted-foreground">
+                    <Gift className="h-10 w-10 mx-auto mb-3 opacity-50" />
+                    <p>ยังไม่มีประวัติแต้ม</p>
                   </div>
                 )}
               </Card>
@@ -522,9 +586,9 @@ export default function CustomerDetail({ customer }: CustomerDetailProps) {
             <TabsContent value="behavior" className="mt-4">
               <Card className="p-4">
                 {customer.behaviors.length > 0 ? (
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     {customer.behaviors.map((behavior) => (
-                      <div key={behavior.id} className="flex items-center gap-3 py-2 border-b border-border last:border-0">
+                      <div key={behavior.id} className="flex items-center gap-3 py-3 border-b border-border last:border-0">
                         <div className={`p-2 rounded-full ${
                           behavior.behavior_type === "view" ? "bg-blue-100 text-blue-600" :
                           behavior.behavior_type === "wishlist_add" ? "bg-pink-100 text-pink-600" :
@@ -532,24 +596,25 @@ export default function CustomerDetail({ customer }: CustomerDetailProps) {
                         }`}>
                           {getBehaviorIcon(behavior.behavior_type)}
                         </div>
-                        <div className="flex-1">
-                          <p className="font-medium text-sm">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm capitalize">
                             {behavior.behavior_type.replace("_", " ")}
                           </p>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-xs text-muted-foreground truncate">
                             {behavior.variant?.product?.name} 
                             {behavior.variant?.color_name && ` (${behavior.variant.color_name})`}
                           </p>
                         </div>
-                        <span className="text-xs text-muted-foreground">
-                          {formatDate(behavior.created_at)}
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">
+                          {formatShortDate(behavior.created_at)}
                         </span>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    No behavior tracked yet
+                  <div className="text-center py-12 text-muted-foreground">
+                    <Eye className="h-10 w-10 mx-auto mb-3 opacity-50" />
+                    <p>ยังไม่มีข้อมูลพฤติกรรม</p>
                   </div>
                 )}
               </Card>
@@ -567,7 +632,7 @@ export default function CustomerDetail({ customer }: CustomerDetailProps) {
                             {claim.claim_type}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            {claim.reason} • {formatDate(claim.created_at)}
+                            {claim.reason} • {formatShortDate(claim.created_at)}
                           </p>
                         </div>
                         <Badge variant={claim.status === "approved" ? "default" : "secondary"}>
@@ -577,8 +642,9 @@ export default function CustomerDetail({ customer }: CustomerDetailProps) {
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    No claims or returns
+                  <div className="text-center py-12 text-muted-foreground">
+                    <FileText className="h-10 w-10 mx-auto mb-3 opacity-50" />
+                    <p>ไม่มีประวัติการเคลม</p>
                   </div>
                 )}
               </Card>

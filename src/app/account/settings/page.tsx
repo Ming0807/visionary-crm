@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, User, Bell, Shield, Loader2, Cake } from "lucide-react";
+import { ChevronLeft, User, Bell, Shield, Loader2, Cake, Camera, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,6 +19,8 @@ export default function SettingsPage() {
     const { isLoggedIn, isLoading, customer, profile, refreshCustomer, logout } = useAuth();
     const { toast } = useToast();
     const [isSaving, setIsSaving] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const [form, setForm] = useState({
         name: "",
         phone: "",
@@ -25,6 +28,9 @@ export default function SettingsPage() {
         address: "",
         birthday: "",
     });
+
+    // Get profile image URL - customer.profileImageUrl or LINE profile
+    const profileImageUrl = customer?.profileImageUrl || profile?.pictureUrl;
 
     // Sync form with customer data when loaded
     useEffect(() => {
@@ -79,6 +85,72 @@ export default function SettingsPage() {
         }
     };
 
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !customer?.id) return;
+
+        // Validate file
+        if (!file.type.startsWith("image/")) {
+            toast({ title: "กรุณาเลือกไฟล์รูปภาพ", variant: "destructive" });
+            return;
+        }
+        if (file.size > 5 * 1024 * 1024) { // 5MB limit
+            toast({ title: "ไฟล์ต้องมีขนาดไม่เกิน 5MB", variant: "destructive" });
+            return;
+        }
+
+        setIsUploading(true);
+        try {
+            // Upload to Cloudinary
+            const formData = new FormData();
+            formData.append("file", file);
+            formData.append("type", "profile");
+
+            const uploadRes = await fetch("/api/upload", {
+                method: "POST",
+                body: formData,
+            });
+
+            if (!uploadRes.ok) throw new Error("Upload failed");
+
+            const { url } = await uploadRes.json();
+
+            // Update customer profile_image_url
+            const { error } = await supabase
+                .from("customers")
+                .update({ profile_image_url: url })
+                .eq("id", customer.id);
+
+            if (error) throw error;
+
+            toast({ title: "อัพโหลดรูปสำเร็จ!" });
+            refreshCustomer();
+        } catch {
+            toast({ title: "อัพโหลดไม่สำเร็จ", variant: "destructive" });
+        } finally {
+            setIsUploading(false);
+            if (fileInputRef.current) fileInputRef.current.value = "";
+        }
+    };
+
+    const handleRemoveImage = async () => {
+        if (!customer?.id) return;
+        
+        try {
+            const { error } = await supabase
+                .from("customers")
+                .update({ profile_image_url: null })
+                .eq("id", customer.id);
+
+            if (error) throw error;
+
+            toast({ title: "ลบรูปสำเร็จ" });
+            refreshCustomer();
+        } catch {
+            toast({ title: "เกิดข้อผิดพลาด", variant: "destructive" });
+        }
+    };
+
     return (
         <div className="container mx-auto px-4 py-8 max-w-2xl">
             <div className="flex items-center gap-4 mb-8">
@@ -87,6 +159,70 @@ export default function SettingsPage() {
                 </Button>
                 <h1 className="text-2xl font-bold">ตั้งค่าบัญชี</h1>
             </div>
+
+            {/* Profile Picture */}
+            <Card className="p-6 mb-6">
+                <h2 className="font-semibold flex items-center gap-2 mb-4">
+                    <Camera className="h-5 w-5" />
+                    รูปโปรไฟล์
+                </h2>
+                <div className="flex items-center gap-4">
+                    <div className="relative">
+                        {profileImageUrl ? (
+                            <Image
+                                src={profileImageUrl}
+                                alt="Profile"
+                                width={80}
+                                height={80}
+                                className="rounded-full object-cover"
+                            />
+                        ) : (
+                            <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
+                                <User className="h-10 w-10 text-primary" />
+                            </div>
+                        )}
+                        {isUploading && (
+                            <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
+                                <Loader2 className="h-6 w-6 animate-spin text-white" />
+                            </div>
+                        )}
+                    </div>
+                    <div className="flex-1">
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/*"
+                            onChange={handleImageUpload}
+                            className="hidden"
+                        />
+                        <div className="flex gap-2">
+                            <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={isUploading}
+                            >
+                                {isUploading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Camera className="h-4 w-4 mr-2" />}
+                                เปลี่ยนรูป
+                            </Button>
+                            {customer?.profileImageUrl && (
+                                <Button 
+                                    size="sm" 
+                                    variant="ghost"
+                                    onClick={handleRemoveImage}
+                                    className="text-destructive hover:text-destructive"
+                                >
+                                    <X className="h-4 w-4 mr-1" />
+                                    ลบ
+                                </Button>
+                            )}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-2">
+                            รองรับ JPG, PNG ขนาดไม่เกิน 5MB
+                        </p>
+                    </div>
+                </div>
+            </Card>
 
             {/* Profile Settings */}
             <Card className="p-6 mb-6">

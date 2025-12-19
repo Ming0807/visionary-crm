@@ -7,6 +7,10 @@ interface TableSkeletonProps {
 }
 
 export function TableSkeleton({ rows = 5, columns = 6, className }: TableSkeletonProps) {
+    // Deterministic widths to avoid hydration mismatch
+    const headerWidths = [80, 60, 70, 55, 65, 75, 50, 85];
+    const cellWidths = [150, 80, 70, 60, 75, 65, 55, 90];
+    
     return (
         <div className={cn("bg-card rounded-2xl border border-border overflow-hidden", className)}>
             {/* Header */}
@@ -16,7 +20,7 @@ export function TableSkeleton({ rows = 5, columns = 6, className }: TableSkeleto
                         <div
                             key={i}
                             className="h-4 bg-muted rounded animate-pulse"
-                            style={{ width: `${Math.random() * 60 + 40}px` }}
+                            style={{ width: `${headerWidths[i % headerWidths.length]}px` }}
                         />
                     ))}
                 </div>
@@ -33,8 +37,8 @@ export function TableSkeleton({ rows = 5, columns = 6, className }: TableSkeleto
                             key={colIdx}
                             className="h-4 bg-muted rounded animate-pulse"
                             style={{
-                                width: colIdx === 0 ? '150px' : `${Math.random() * 80 + 50}px`,
-                                opacity: 0.7 - rowIdx * 0.1,
+                                width: `${cellWidths[(colIdx + rowIdx) % cellWidths.length]}px`,
+                                opacity: Math.max(0.3, 0.7 - rowIdx * 0.08),
                             }}
                         />
                     ))}
@@ -94,15 +98,18 @@ interface ChartSkeletonProps {
 }
 
 export function ChartSkeleton({ className }: ChartSkeletonProps) {
+    // Deterministic heights to avoid hydration mismatch
+    const barHeights = [60, 80, 45, 90, 55, 75, 65];
+    
     return (
         <div className={cn("bg-card rounded-xl border border-border p-6 animate-pulse", className)}>
             <div className="h-4 bg-muted rounded w-32 mb-4" />
             <div className="h-64 bg-muted/50 rounded-lg flex items-end justify-evenly p-4 gap-2">
-                {Array.from({ length: 7 }).map((_, i) => (
+                {barHeights.map((height, i) => (
                     <div
                         key={i}
                         className="bg-muted rounded-t w-full max-w-8"
-                        style={{ height: `${Math.random() * 80 + 20}%` }}
+                        style={{ height: `${height}%` }}
                     />
                 ))}
             </div>

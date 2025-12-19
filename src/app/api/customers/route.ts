@@ -31,8 +31,9 @@ export async function GET(request: NextRequest) {
                 rfm_segment,
                 rfm_score,
                 birthday,
+                profile_image_url,
                 created_at,
-                social_identities(id, platform, social_user_id)
+                social_identities(id, platform, social_user_id, profile_data)
             `, { count: "exact" });
 
         // Apply search filter

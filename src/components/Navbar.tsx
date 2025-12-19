@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { ShoppingBag, Menu, X, Search } from "lucide-react";
-import { useState } from "react";
+import { ShoppingBag, Menu, X, Search, Home, Package, Layers, Info, Phone, User } from "lucide-react";
+import { useState, useCallback } from "react";
 import { useCart } from "@/context/CartContext";
 import { useStoreConfig } from "@/context/StoreConfigContext";
 import { Button } from "@/components/ui/button";
@@ -11,11 +11,11 @@ import CartDrawer from "@/components/CartDrawer";
 import UserMenu from "@/components/UserMenu";
 
 const navLinks = [
-  { href: "/", label: "หน้าแรก" },
-  { href: "/products", label: "สินค้า" },
-  { href: "/collections", label: "คอลเลกชัน" },
-  { href: "/about", label: "เกี่ยวกับเรา" },
-  { href: "/contact", label: "ติดต่อ" },
+  { href: "/", label: "หน้าแรก", icon: Home },
+  { href: "/products", label: "สินค้า", icon: Package },
+  { href: "/collections", label: "คอลเลกชัน", icon: Layers },
+  { href: "/about", label: "เกี่ยวกับเรา", icon: Info },
+  { href: "/contact", label: "ติดต่อ", icon: Phone },
 ];
 
 export default function Navbar() {
@@ -23,22 +23,26 @@ export default function Navbar() {
   const { totalItems, setIsOpen } = useCart();
   const { config } = useStoreConfig();
 
+  const closeMobileMenu = useCallback(() => {
+    setIsMobileMenuOpen(false);
+  }, []);
+
   return (
     <>
       <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <nav className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
-            {/* Logo - Larger for brand visibility */}
+            {/* Logo - Responsive sizing */}
             <Link href="/" className="flex items-center flex-shrink-0">
-              <div className="h-16 py-1 min-w-[200px] flex items-center">
+              <div className="h-12 md:h-16 py-1 min-w-[120px] md:min-w-[200px] flex items-center">
                 {config.logo ? (
                   <img 
                     src={config.logo} 
                     alt={config.siteName} 
-                    className="h-full w-auto max-w-[280px] object-contain"
+                    className="h-full w-auto max-w-[160px] md:max-w-[280px] object-contain"
                   />
                 ) : (
-                  <span className="text-xl sm:text-2xl font-bold tracking-tight text-foreground whitespace-nowrap">
+                  <span className="text-lg md:text-2xl font-bold tracking-tight text-foreground whitespace-nowrap">
                     {config.siteName.includes(" ") ? (
                       <>
                         {config.siteName.split(" ")[0]}{" "}
@@ -113,41 +117,50 @@ export default function Navbar() {
             </div>
           </div>
 
-          {/* Mobile Menu */}
-          {isMobileMenuOpen && (
-            <div className="md:hidden border-t border-border py-4 animate-fade-in">
-              <div className="flex flex-col space-y-2">
-                {/* Mobile Navigation Links */}
-                {navLinks.map((link) => (
+          {/* Mobile Menu - Enhanced with icons and better UX */}
+          <div 
+            className={`md:hidden border-t border-border overflow-hidden transition-all duration-300 ease-out ${
+              isMobileMenuOpen 
+                ? 'max-h-[500px] opacity-100 py-3' 
+                : 'max-h-0 opacity-0 py-0'
+            }`}
+          >
+            <div className="flex flex-col gap-1">
+              {/* Mobile Navigation Links with Icons */}
+              {navLinks.map((link) => {
+                const IconComponent = link.icon;
+                return (
                   <Link
                     key={link.href}
                     href={link.href}
-                    className="text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-smooth px-4 py-3 rounded-lg"
-                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex items-center gap-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 active:bg-muted transition-colors px-4 py-3.5 rounded-xl"
+                    onClick={closeMobileMenu}
                   >
+                    <IconComponent className="h-4 w-4 text-primary/70" />
                     {link.label}
                   </Link>
-                ))}
-                
-                {/* Mobile Search */}
-                <Link 
-                  href="/search" 
-                  className="text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-smooth px-4 py-3 rounded-lg flex items-center gap-2 sm:hidden"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  <Search className="h-4 w-4" />
-                  ค้นหา
-                </Link>
-              </div>
+                );
+              })}
               
-              {/* Mobile User Menu / Login - Full width centered */}
-              <div className="mt-4 pt-4 border-t border-border sm:hidden">
-                <div className="flex justify-center">
-                  <UserMenu />
-                </div>
+              {/* Mobile Search */}
+              <Link 
+                href="/search" 
+                className="flex items-center gap-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 active:bg-muted transition-colors px-4 py-3.5 rounded-xl sm:hidden"
+                onClick={closeMobileMenu}
+              >
+                <Search className="h-4 w-4 text-primary/70" />
+                ค้นหา
+              </Link>
+            </div>
+            
+            {/* Mobile User Menu / Login */}
+            <div className="mt-3 pt-3 border-t border-border/50 sm:hidden">
+              <div className="flex items-center justify-center gap-3 px-4 py-2">
+                <User className="h-4 w-4 text-muted-foreground" />
+                <UserMenu />
               </div>
             </div>
-          )}
+          </div>
         </nav>
       </header>
 

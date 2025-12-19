@@ -32,7 +32,14 @@ interface Customer {
     rfm_segment: string | null;
     rfm_score: string | null;
     birthday: string | null;
+    profile_image_url: string | null;
     created_at: string;
+    social_identities?: Array<{
+        id: string;
+        platform: string;
+        social_user_id: string;
+        profile_data?: Record<string, unknown>;
+    }>;
 }
 
 interface Order {

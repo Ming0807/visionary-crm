@@ -100,12 +100,12 @@ export default function PromoBanner() {
 
     const TimeBlock = ({ value, label }: { value: number; label: string }) => (
         <div className="text-center">
-            <div className="bg-white/20 backdrop-blur-sm rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 min-w-[44px] sm:min-w-[60px]">
-                <span className="text-lg sm:text-2xl lg:text-3xl font-bold text-white">
+            <div className="bg-white/20 backdrop-blur-sm rounded-md sm:rounded-lg px-1.5 sm:px-3 py-1 sm:py-2 min-w-[36px] sm:min-w-[60px]">
+                <span className="text-base sm:text-2xl lg:text-3xl font-bold text-white tabular-nums">
                     {mounted ? value.toString().padStart(2, "0") : "--"}
                 </span>
             </div>
-            <span className="text-[10px] sm:text-xs text-white/80 mt-0.5 sm:mt-1 block">{label}</span>
+            <span className="text-[9px] sm:text-xs text-white/80 mt-0.5 block leading-tight">{label}</span>
         </div>
     );
 
@@ -119,44 +119,43 @@ export default function PromoBanner() {
                         <div className="absolute bottom-0 left-0 w-32 sm:w-64 h-32 sm:h-64 bg-white rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
                     </div>
 
-                    <div className="relative flex flex-col items-center gap-4 sm:gap-6 lg:flex-row lg:justify-between">
+                    <div className="relative flex flex-col items-center gap-3 sm:gap-6 lg:flex-row lg:justify-between">
                         {/* Left: Text */}
                         <div className="text-center lg:text-left flex-shrink-0">
-                            <span className="inline-block px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full bg-white/20 text-white text-xs sm:text-sm font-medium mb-2 sm:mb-3 animate-pulse">
+                            <span className="inline-block px-2 sm:px-3 py-0.5 rounded-full bg-white/20 text-white text-[10px] sm:text-sm font-medium mb-1.5 sm:mb-3 animate-pulse">
                                 {promo.title}
                             </span>
-                            <h2 className="text-xl sm:text-2xl lg:text-4xl font-bold text-white mb-1 sm:mb-2">
+                            <h2 className="text-lg sm:text-2xl lg:text-4xl font-bold text-white mb-0.5 sm:mb-2">
                                 {promo.subtitle}
                             </h2>
-                            <p className="text-white/90 text-xs sm:text-sm lg:text-base max-w-xs sm:max-w-none">
+                            <p className="text-white/90 text-[11px] sm:text-sm lg:text-base max-w-[280px] sm:max-w-none mx-auto lg:mx-0 leading-snug">
                                 แว่นตาแบรนด์ดังลดราคาเฉพาะช่วงนี้เท่านั้น!
                             </p>
                         </div>
 
-                        {/* Center: Countdown */}
-                        <div className="flex items-center gap-1 sm:gap-2">
-                            <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-white/80 hidden sm:block" />
-                            <div className="flex gap-1 sm:gap-2 items-start">
+                        {/* Center: Countdown - Compact on mobile */}
+                        <div className="flex items-center gap-0.5 sm:gap-2">
+                            <Clock className="h-3.5 w-3.5 sm:h-5 sm:w-5 text-white/80 hidden xs:block" />
+                            <div className="flex gap-0.5 sm:gap-2 items-start">
                                 <TimeBlock value={timeLeft.days} label="วัน" />
-                                <span className="text-lg sm:text-2xl text-white mt-1.5 sm:mt-2">:</span>
+                                <span className="text-sm sm:text-2xl text-white/80 mt-1 sm:mt-2 font-light">:</span>
                                 <TimeBlock value={timeLeft.hours} label="ชม." />
-                                <span className="text-lg sm:text-2xl text-white mt-1.5 sm:mt-2">:</span>
+                                <span className="text-sm sm:text-2xl text-white/80 mt-1 sm:mt-2 font-light">:</span>
                                 <TimeBlock value={timeLeft.minutes} label="นาที" />
-                                <span className="text-lg sm:text-2xl text-white mt-1.5 sm:mt-2">:</span>
-                                <TimeBlock value={timeLeft.seconds} label="วินาที" />
+                                <span className="text-sm sm:text-2xl text-white/80 mt-1 sm:mt-2 font-light">:</span>
+                                <TimeBlock value={timeLeft.seconds} label="วิ" />
                             </div>
                         </div>
 
                         {/* Right: CTA */}
                         <Button
                             size="lg"
-                            className="w-full sm:w-auto bg-white text-primary hover:bg-white/90 rounded-full px-6 sm:px-8 font-semibold shadow-lg hover:shadow-xl transition-all"
+                            className="w-full sm:w-auto bg-white text-primary hover:bg-white/90 rounded-full px-5 sm:px-8 py-2.5 sm:py-3 font-semibold shadow-lg hover:shadow-xl transition-all text-sm sm:text-base"
                             asChild
                         >
                             <Link href="/products?sale=true">
-                                <span className="sm:hidden">ช้อปสินค้าลดราคา</span>
-                                <span className="hidden sm:inline">ช้อปเลย</span>
-                                <ArrowRight className="ml-2 h-4 w-4" />
+                                ช้อปสินค้าลดราคา
+                                <ArrowRight className="ml-1.5 sm:ml-2 h-4 w-4" />
                             </Link>
                         </Button>
                     </div>
