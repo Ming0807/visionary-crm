@@ -28,7 +28,7 @@ const nextConfig: NextConfig = {
   },
   // Experimental features for performance
   experimental: {
-    optimizeCss: true,
+    // optimizeCss: true, // Requires 'critters' package - disabled for now
   },
   // Compression
   compress: true,

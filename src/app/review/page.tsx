@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Star, CheckCircle, Package, Loader2 } from "lucide-react";
 import Image from "next/image";
@@ -26,7 +26,7 @@ interface Order {
     items: OrderItem[];
 }
 
-export default function ReviewPage() {
+function ReviewPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const orderNumber = searchParams.get("order");
@@ -47,6 +47,7 @@ export default function ReviewPage() {
         } else if (!authLoading && !isLoggedIn) {
             router.push("/");
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [orderNumber, customer?.id, authLoading, isLoggedIn]);
 
     const fetchOrder = async () => {
@@ -137,7 +138,7 @@ export default function ReviewPage() {
                 title: "ขอบคุณสำหรับรีวิว! 🎉",
                 description: "รีวิวของคุณจะแสดงหลังจากได้รับการอนุมัติ",
             });
-        } catch (error) {
+        } catch {
             toast({
                 title: "เกิดข้อผิดพลาด",
                 description: "ไม่สามารถส่งรีวิวได้ กรุณาลองใหม่",
@@ -356,5 +357,24 @@ export default function ReviewPage() {
                 </button>
             </div>
         </div>
+    );
+}
+
+// Loading fallback for Suspense
+function ReviewPageLoading() {
+    return (
+        <div className="container mx-auto px-4 py-16 text-center">
+            <Loader2 className="h-12 w-12 animate-spin mx-auto text-primary" />
+            <p className="mt-4 text-muted-foreground">กำลังโหลด...</p>
+        </div>
+    );
+}
+
+// Main export with Suspense boundary
+export default function ReviewPage() {
+    return (
+        <Suspense fallback={<ReviewPageLoading />}>
+            <ReviewPageContent />
+        </Suspense>
     );
 }
