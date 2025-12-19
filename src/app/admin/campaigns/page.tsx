@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { 
     Plus, 
@@ -10,15 +10,23 @@ import {
     Users, 
     Play, 
     Pause, 
-    BarChart3,
     Gift,
     Clock,
     RefreshCw,
-    Edit
+    Edit,
+    Mail,
+    MessageSquare,
+    AlertCircle,
+    CheckCircle2,
+    XCircle,
+    Link2,
+    ExternalLink
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 interface Campaign {
     id: string;
@@ -44,15 +52,29 @@ interface BirthdayCustomer {
     id: string;
     name: string | null;
     phone: string | null;
+    email: string | null;
     birthday: string;
     daysUntil: number;
     birthdayDate: string;
     tier: string;
     total_spent: number;
+    hasLine: boolean;
+    hasEmail: boolean;
+    channel: "line" | "email" | "none";
+}
+
+interface SendResult {
+    success: boolean;
+    sent: number;
+    total: number;
+    channels?: {
+        line: number;
+        email: number;
+    };
 }
 
 const TYPE_CONFIG: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
-    birthday: { label: "Birthday", icon: <Gift className="h-4 w-4" />, color: "bg-pink-100 text-pink-700" },
+    birthday: { label: "Birthday", icon: <Gift className="h-4 w-4" />, color: "bg-primary/10 text-primary" },
     re_engagement: { label: "Re-engagement", icon: <RefreshCw className="h-4 w-4" />, color: "bg-blue-100 text-blue-700" },
     point_expiration: { label: "Point Expiration", icon: <Clock className="h-4 w-4" />, color: "bg-yellow-100 text-yellow-700" },
     promotion: { label: "Promotion", icon: <Megaphone className="h-4 w-4" />, color: "bg-green-100 text-green-700" },
@@ -66,14 +88,55 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
     completed: { label: "Completed", color: "bg-blue-100 text-blue-700" },
 };
 
+// Premium Channel Badge Component
+function ChannelBadge({ channel }: { channel: "line" | "email" | "none" }) {
+    if (channel === "line") {
+        return (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-sm">
+                <MessageSquare className="h-3.5 w-3.5" />
+                LINE
+            </span>
+        );
+    }
+    if (channel === "email") {
+        return (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-sm">
+                <Mail className="h-3.5 w-3.5" />
+                Email
+            </span>
+        );
+    }
+    return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-gray-400 to-gray-500 text-white shadow-sm">
+            <AlertCircle className="h-3.5 w-3.5" />
+            ไม่มีช่องทาง
+        </span>
+    );
+}
+
 export default function AdminCampaignsPage() {
     const [campaigns, setCampaigns] = useState<Campaign[]>([]);
     const [birthdays, setBirthdays] = useState<BirthdayCustomer[]>([]);
     const [loading, setLoading] = useState(true);
     const [running, setRunning] = useState<string | null>(null);
     const [selectedCustomers, setSelectedCustomers] = useState<string[]>([]);
-    const [sendMessage, setSendMessage] = useState("🎂 สุขสันต์วันเกิดครับ/ค่ะ คุณ{{name}}! รับส่วนลดพิเศษ 10% วันนี้เท่านั้น!");
+    const [sendMessage, setSendMessage] = useState("🎂 สุขสันต์วันเกิดครับ/ค่ะ คุณ{{name}}!\n\nรับส่วนลดพิเศษ 10% สำหรับวันเกิดของคุณ");
+    const [linkUrl, setLinkUrl] = useState("");
+    const [linkText, setLinkText] = useState("ดูสินค้า");
     const [sending, setSending] = useState(false);
+    const [sendResult, setSendResult] = useState<SendResult | null>(null);
+
+    // Calculate selection summary
+    const selectionSummary = useMemo(() => {
+        const selected = birthdays.filter(b => selectedCustomers.includes(b.id));
+        return {
+            total: selected.length,
+            line: selected.filter(c => c.channel === "line").length,
+            email: selected.filter(c => c.channel === "email").length,
+            none: selected.filter(c => c.channel === "none").length,
+            canSend: selected.filter(c => c.channel !== "none").length,
+        };
+    }, [selectedCustomers, birthdays]);
 
     useEffect(() => {
         fetchCampaigns();
@@ -84,7 +147,6 @@ export default function AdminCampaignsPage() {
         try {
             const res = await fetch("/api/campaigns");
             const data = await res.json();
-            // Handle both old format (array) and new format ({ campaigns: [] })
             setCampaigns(Array.isArray(data) ? data : data.campaigns || []);
         } catch (error) {
             console.error("Failed to fetch campaigns:", error);
@@ -109,37 +171,57 @@ export default function AdminCampaignsPage() {
                 ? prev.filter(id => id !== customerId)
                 : [...prev, customerId]
         );
+        setSendResult(null);
     };
 
     const selectAllBirthdays = () => {
         setSelectedCustomers(birthdays.map(b => b.id));
+        setSendResult(null);
+    };
+
+    const selectOnlyCanSend = () => {
+        setSelectedCustomers(birthdays.filter(b => b.channel !== "none").map(b => b.id));
+        setSendResult(null);
     };
 
     const clearSelection = () => {
         setSelectedCustomers([]);
+        setSendResult(null);
     };
 
     const sendToSelected = async () => {
-        if (selectedCustomers.length === 0) {
-            alert("กรุณาเลือกลูกค้าก่อน");
+        if (selectionSummary.canSend === 0) {
+            alert("ไม่มีลูกค้าที่ส่งได้ (ต้องมี LINE หรือ Email)");
             return;
         }
         setSending(true);
+        setSendResult(null);
+        
+        // Build message with link
+        let finalMessage = sendMessage;
+        if (linkUrl) {
+            finalMessage += `\n\n🔗 ${linkText}: ${linkUrl}`;
+        }
+        
         try {
             const res = await fetch("/api/campaigns/send", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     customerIds: selectedCustomers,
-                    message: sendMessage
+                    message: finalMessage,
+                    linkUrl: linkUrl || undefined,
+                    linkText: linkText || undefined,
                 })
             });
             const result = await res.json();
-            alert(`ส่งสำเร็จ ${result.sent} / ${result.total} คน`);
-            setSelectedCustomers([]);
+            setSendResult(result);
+            if (result.success) {
+                setSelectedCustomers([]);
+            }
         } catch (error) {
-            alert("เกิดข้อผิดพลาดในการส่ง");
             console.error(error);
+            setSendResult({ success: false, sent: 0, total: selectedCustomers.length });
         } finally {
             setSending(false);
         }
@@ -199,315 +281,474 @@ export default function AdminCampaignsPage() {
     }
 
     return (
-        <div className="p-6 lg:p-8">
+        <div className="p-6 lg:p-8 space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold text-foreground">Campaigns</h1>
                     <p className="text-muted-foreground">
-                        Automated marketing campaigns
+                        ส่งข้อความถึงลูกค้าผ่าน LINE หรือ Email
                     </p>
                 </div>
-                <Button asChild>
+                <Button asChild className="shadow-sm">
                     <Link href="/admin/campaigns/new">
                         <Plus className="h-4 w-4 mr-2" />
-                        Create Campaign
+                        สร้าง Campaign
                     </Link>
                 </Button>
             </div>
 
-            {/* Quick Actions */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                <Card 
-                    className="p-4 cursor-pointer hover:bg-muted/50 transition-colors border-2 border-green-200 bg-green-50" 
-                    onClick={() => runCampaign("", true)}
-                >
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-green-100 text-green-600">
-                            <Send className="h-5 w-5" />
+            {/* Quick Stats - Premium Style */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Card className="p-5 shadow-premium hover-lift">
+                    <div className="flex items-center gap-4">
+                        <div className="p-3 rounded-xl bg-primary/10">
+                            <Users className="h-5 w-5 text-primary" />
                         </div>
                         <div>
-                            <p className="font-medium text-sm text-green-700">🧪 Test Send All</p>
-                            <p className="text-xs text-green-600">Send to ALL LINE users</p>
+                            <p className="font-bold text-2xl">{campaigns.filter(c => c.status === "active").length}</p>
+                            <p className="text-sm text-muted-foreground">Active</p>
                         </div>
                     </div>
                 </Card>
-                <Card className="p-4 cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => runCampaign("")}>
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-pink-100 text-pink-600">
-                            <Gift className="h-5 w-5" />
+                <Card className="p-5 shadow-premium hover-lift">
+                    <div className="flex items-center gap-4">
+                        <div className="p-3 rounded-xl bg-accent/10">
+                            <Send className="h-5 w-5 text-accent" />
                         </div>
                         <div>
-                            <p className="font-medium text-sm">Birthday Check</p>
-                            <p className="text-xs text-muted-foreground">Send today's wishes</p>
+                            <p className="font-bold text-2xl">{campaigns.reduce((sum, c) => sum + c.total_sent, 0)}</p>
+                            <p className="text-sm text-muted-foreground">ส่งแล้ว</p>
                         </div>
                     </div>
                 </Card>
-                <Card className="p-4 cursor-pointer hover:bg-muted/50 transition-colors">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-blue-100 text-blue-600">
-                            <RefreshCw className="h-5 w-5" />
+                <Card className="p-5 shadow-premium hover-lift">
+                    <div className="flex items-center gap-4">
+                        <div className="p-3 rounded-xl bg-primary/10">
+                            <Gift className="h-5 w-5 text-primary" />
                         </div>
                         <div>
-                            <p className="font-medium text-sm">Re-engage</p>
-                            <p className="text-xs text-muted-foreground">Inactive customers</p>
+                            <p className="font-bold text-2xl">{birthdays.filter(b => b.daysUntil === 0).length}</p>
+                            <p className="text-sm text-muted-foreground">วันเกิดวันนี้</p>
                         </div>
                     </div>
                 </Card>
-                <Card className="p-4">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-green-100 text-green-600">
-                            <Users className="h-5 w-5" />
+                <Card className="p-5 shadow-premium hover-lift">
+                    <div className="flex items-center gap-4">
+                        <div className="p-3 rounded-xl bg-secondary">
+                            <Calendar className="h-5 w-5 text-secondary-foreground" />
                         </div>
                         <div>
-                            <p className="font-medium text-sm">{campaigns.filter(c => c.status === "active").length}</p>
-                            <p className="text-xs text-muted-foreground">Active campaigns</p>
-                        </div>
-                    </div>
-                </Card>
-                <Card className="p-4">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-purple-100 text-purple-600">
-                            <Send className="h-5 w-5" />
-                        </div>
-                        <div>
-                            <p className="font-medium text-sm">{campaigns.reduce((sum, c) => sum + c.total_sent, 0)}</p>
-                            <p className="text-xs text-muted-foreground">Total sent</p>
+                            <p className="font-bold text-2xl">{birthdays.length}</p>
+                            <p className="text-sm text-muted-foreground">ใน 7 วัน</p>
                         </div>
                     </div>
                 </Card>
             </div>
 
-            {/* Birthday Section */}
+            {/* Birthday Section - Premium Design */}
             {birthdays.length > 0 && (
-                <Card className="p-6 mb-6 border-2 border-pink-200 bg-pink-50/50">
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-2">
-                            <Gift className="h-5 w-5 text-pink-600" />
-                            <h2 className="font-semibold text-pink-900">🎂 วันเกิดลูกค้าใน 7 วันข้างหน้า ({birthdays.length} คน)</h2>
+                <Card className="overflow-hidden shadow-premium">
+                    {/* Header with brand gradient */}
+                    <div className="bg-gradient-to-r from-primary to-accent text-primary-foreground p-6">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
+                                    <Gift className="h-7 w-7" />
+                                </div>
+                                <div>
+                                    <h2 className="font-bold text-xl">🎂 วันเกิดลูกค้า</h2>
+                                    <p className="text-primary-foreground/80 text-sm mt-1">
+                                        ใน 7 วันข้างหน้า • {birthdays.length} คน
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex gap-3 text-sm">
+                                <div className="flex items-center gap-2 bg-white/20 rounded-full px-4 py-2">
+                                    <MessageSquare className="h-4 w-4" />
+                                    <span>{birthdays.filter(b => b.channel === "line").length} LINE</span>
+                                </div>
+                                <div className="flex items-center gap-2 bg-white/20 rounded-full px-4 py-2">
+                                    <Mail className="h-4 w-4" />
+                                    <span>{birthdays.filter(b => b.channel === "email").length} Email</span>
+                                </div>
+                            </div>
                         </div>
-                        <div className="flex gap-2">
-                            <Button variant="outline" size="sm" onClick={selectAllBirthdays}>
+                    </div>
+
+                    <div className="p-6">
+                        {/* Selection Actions */}
+                        <div className="flex flex-wrap gap-3 mb-5">
+                            <Button variant="outline" size="sm" onClick={selectAllBirthdays} className="rounded-full">
                                 เลือกทั้งหมด
                             </Button>
+                            <Button variant="outline" size="sm" onClick={selectOnlyCanSend} className="rounded-full border-green-300 text-green-700 hover:bg-green-50">
+                                <CheckCircle2 className="h-4 w-4 mr-1" />
+                                เลือกเฉพาะที่ส่งได้
+                            </Button>
                             {selectedCustomers.length > 0 && (
-                                <Button variant="outline" size="sm" onClick={clearSelection}>
+                                <Button variant="outline" size="sm" onClick={clearSelection} className="rounded-full border-red-300 text-red-600 hover:bg-red-50">
+                                    <XCircle className="h-4 w-4 mr-1" />
                                     ล้าง ({selectedCustomers.length})
                                 </Button>
                             )}
                         </div>
-                    </div>
-                    
-                    {/* Customer List with Checkboxes */}
-                    <div className="grid gap-3 mb-4">
-                        {birthdays.map((customer) => (
-                            <div 
-                                key={customer.id} 
-                                className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors ${
-                                    selectedCustomers.includes(customer.id) 
-                                        ? 'bg-pink-100 border-pink-300' 
-                                        : 'bg-white hover:bg-pink-50'
-                                }`}
-                                onClick={() => toggleCustomerSelection(customer.id)}
-                            >
-                                <div className="flex items-center gap-3">
-                                    <input 
-                                        type="checkbox" 
-                                        checked={selectedCustomers.includes(customer.id)}
-                                        onChange={() => toggleCustomerSelection(customer.id)}
-                                        className="h-4 w-4 text-pink-600 rounded focus:ring-pink-500"
-                                        onClick={(e) => e.stopPropagation()}
-                                    />
-                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg ${customer.daysUntil === 0 ? 'bg-pink-500 text-white' : 'bg-pink-100'}`}>
-                                        {customer.daysUntil === 0 ? '🎉' : '🎂'}
+
+                        {/* Customer List - Premium Style */}
+                        <div className="border rounded-2xl divide-y overflow-hidden max-h-[400px] overflow-y-auto">
+                            {birthdays.map((customer) => (
+                                <div 
+                                    key={customer.id} 
+                                    className={`flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 cursor-pointer transition-all hover:bg-secondary/50 gap-2 sm:gap-0 ${
+                                        selectedCustomers.includes(customer.id) ? 'bg-primary/5 border-l-4 border-l-primary' : ''
+                                    }`}
+                                    onClick={() => toggleCustomerSelection(customer.id)}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        {/* Checkbox */}
+                                        <input 
+                                            type="checkbox" 
+                                            checked={selectedCustomers.includes(customer.id)}
+                                            onChange={() => toggleCustomerSelection(customer.id)}
+                                            className="h-5 w-5 text-primary rounded-md focus:ring-primary border-2 shrink-0"
+                                            onClick={(e) => e.stopPropagation()}
+                                        />
+                                        
+                                        {/* Avatar */}
+                                        <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center text-lg sm:text-xl shadow-sm shrink-0 ${
+                                            customer.daysUntil === 0 
+                                                ? 'bg-gradient-to-br from-primary to-accent text-white' 
+                                                : 'bg-secondary'
+                                        }`}>
+                                            {customer.daysUntil === 0 ? '🎉' : '🎂'}
+                                        </div>
+                                        
+                                        {/* Info */}
+                                        <div className="min-w-0">
+                                            <p className="font-semibold text-foreground text-sm sm:text-base truncate">{customer.name || 'ไม่ระบุชื่อ'}</p>
+                                            <p className="text-xs sm:text-sm text-muted-foreground truncate">
+                                                {customer.phone || customer.email || '-'}
+                                            </p>
+                                        </div>
                                     </div>
+
+                                    <div className="flex items-center gap-2 ml-8 sm:ml-0">
+                                        {/* Channel Badge */}
+                                        <ChannelBadge channel={customer.channel} />
+                                        
+                                        {/* Days Badge */}
+                                        <Badge variant={customer.daysUntil === 0 ? "default" : "secondary"} className="rounded-full px-2 sm:px-3 text-xs">
+                                            {customer.daysUntil === 0 ? '🎉 วันนี้!' : `${customer.daysUntil}d`}
+                                        </Badge>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Selection Summary & Message Form */}
+                        {selectedCustomers.length > 0 && (
+                            <div className="mt-6 p-4 sm:p-6 bg-secondary/30 rounded-2xl border border-border">
+                                <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+                                    <Send className="h-5 w-5 text-primary" />
+                                    เตรียมส่งข้อความ
+                                </h3>
+                                
+                                {/* Channel Summary Cards */}
+                                <div className="grid grid-cols-3 gap-4 mb-6">
+                                    <div className="flex items-center gap-3 p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-200">
+                                        <div className="p-2 bg-green-500 rounded-lg">
+                                            <MessageSquare className="h-5 w-5 text-white" />
+                                        </div>
+                                        <div>
+                                            <p className="font-bold text-xl text-green-700">{selectionSummary.line}</p>
+                                            <p className="text-xs text-green-600">ผ่าน LINE</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="flex items-center gap-3 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
+                                        <div className="p-2 bg-blue-500 rounded-lg">
+                                            <Mail className="h-5 w-5 text-white" />
+                                        </div>
+                                        <div>
+                                            <p className="font-bold text-xl text-blue-700">{selectionSummary.email}</p>
+                                            <p className="text-xs text-blue-600">ผ่าน Email</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="flex items-center gap-3 p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border border-gray-200">
+                                        <div className="p-2 bg-gray-400 rounded-lg">
+                                            <AlertCircle className="h-5 w-5 text-white" />
+                                        </div>
+                                        <div>
+                                            <p className="font-bold text-xl text-gray-600">{selectionSummary.none}</p>
+                                            <p className="text-xs text-gray-500">ส่งไม่ได้</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Message Input */}
+                                <div className="space-y-4">
                                     <div>
-                                        <p className="font-medium">{customer.name || 'ไม่ระบุชื่อ'}</p>
+                                        <Label className="text-sm font-medium">ข้อความ</Label>
+                                        <p className="text-xs text-muted-foreground mb-2">ใช้ {"{{name}}"} สำหรับชื่อลูกค้า</p>
+                                        <textarea 
+                                            value={sendMessage}
+                                            onChange={(e) => setSendMessage(e.target.value)}
+                                            className="w-full p-4 border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary resize-none"
+                                            rows={4}
+                                        />
+                                    </div>
+                                    
+                                    {/* Link Attachment - NEW */}
+                                    <div className="p-4 bg-white rounded-xl border-2 border-dashed border-primary/30">
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <Link2 className="h-5 w-5 text-primary" />
+                                            <Label className="text-sm font-semibold">แนบลิงค์ (ไม่บังคับ)</Label>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                            <div>
+                                                <Label className="text-xs text-muted-foreground">URL</Label>
+                                                <Input 
+                                                    placeholder="https://example.com/products"
+                                                    value={linkUrl}
+                                                    onChange={(e) => setLinkUrl(e.target.value)}
+                                                    className="mt-1"
+                                                />
+                                            </div>
+                                            <div>
+                                                <Label className="text-xs text-muted-foreground">ข้อความปุ่ม</Label>
+                                                <Input 
+                                                    placeholder="ดูสินค้า"
+                                                    value={linkText}
+                                                    onChange={(e) => setLinkText(e.target.value)}
+                                                    className="mt-1"
+                                                />
+                                            </div>
+                                        </div>
+                                        {linkUrl && (
+                                            <div className="mt-3 p-3 bg-primary/5 rounded-lg flex items-center gap-2 text-sm">
+                                                <ExternalLink className="h-4 w-4 text-primary" />
+                                                <span className="text-muted-foreground">Preview:</span>
+                                                <a href={linkUrl} target="_blank" rel="noopener noreferrer" className="text-primary font-medium hover:underline">
+                                                    {linkText || linkUrl}
+                                                </a>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Send Button */}
+                                <Button 
+                                    className="w-full mt-6 py-6 text-lg font-semibold shadow-lg hover:shadow-xl transition-all"
+                                    onClick={sendToSelected}
+                                    disabled={sending || selectionSummary.canSend === 0}
+                                >
+                                    {sending ? (
+                                        <span className="flex items-center gap-2">
+                                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                            กำลังส่ง...
+                                        </span>
+                                    ) : (
+                                        <span className="flex items-center gap-2">
+                                            <Send className="h-5 w-5" />
+                                            ส่งให้ {selectionSummary.canSend} คน
+                                            <span className="text-primary-foreground/70 font-normal">
+                                                ({selectionSummary.line > 0 ? `${selectionSummary.line} LINE` : ''}
+                                                {selectionSummary.line > 0 && selectionSummary.email > 0 ? ', ' : ''}
+                                                {selectionSummary.email > 0 ? `${selectionSummary.email} Email` : ''})
+                                            </span>
+                                        </span>
+                                    )}
+                                </Button>
+
+                                {selectionSummary.none > 0 && (
+                                    <p className="text-center text-sm text-muted-foreground mt-3">
+                                        ⚠️ {selectionSummary.none} คนจะไม่ได้รับ (ไม่มี LINE หรือ Email)
+                                    </p>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Send Result */}
+                        {sendResult && (
+                            <div className={`mt-6 p-6 rounded-2xl border-2 ${
+                                sendResult.success 
+                                    ? 'bg-green-50 border-green-200' 
+                                    : 'bg-red-50 border-red-200'
+                            }`}>
+                                <div className="flex items-center gap-3 mb-4">
+                                    {sendResult.success ? (
+                                        <div className="p-2 bg-green-500 rounded-full">
+                                            <CheckCircle2 className="h-6 w-6 text-white" />
+                                        </div>
+                                    ) : (
+                                        <div className="p-2 bg-red-500 rounded-full">
+                                            <XCircle className="h-6 w-6 text-white" />
+                                        </div>
+                                    )}
+                                    <div>
+                                        <h3 className={`font-bold text-lg ${sendResult.success ? 'text-green-700' : 'text-red-700'}`}>
+                                            {sendResult.success ? 'ส่งสำเร็จ!' : 'เกิดข้อผิดพลาด'}
+                                        </h3>
                                         <p className="text-sm text-muted-foreground">
-                                            {customer.phone || '-'} • {customer.birthdayDate}
+                                            ส่งได้ {sendResult.sent} จาก {sendResult.total} คน
                                         </p>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <Badge className={customer.daysUntil === 0 ? 'bg-pink-500 text-white' : 'bg-pink-100 text-pink-700'}>
-                                        {customer.daysUntil === 0 ? '🎉 วันนี้!' : `อีก ${customer.daysUntil} วัน`}
-                                    </Badge>
-                                    <Link href={`/admin/customers/${customer.id}`} onClick={(e) => e.stopPropagation()}>
-                                        <Button variant="outline" size="sm">ดูโปรไฟล์</Button>
-                                    </Link>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="flex items-center gap-3 p-3 bg-white rounded-xl">
+                                        <MessageSquare className="h-5 w-5 text-green-600" />
+                                        <span className="font-medium">LINE: {sendResult.channels?.line || 0} คน</span>
+                                    </div>
+                                    <div className="flex items-center gap-3 p-3 bg-white rounded-xl">
+                                        <Mail className="h-5 w-5 text-blue-600" />
+                                        <span className="font-medium">Email: {sendResult.channels?.email || 0} คน</span>
+                                    </div>
                                 </div>
                             </div>
-                        ))}
+                        )}
                     </div>
-
-                    {/* Message Input and Send Button */}
-                    {selectedCustomers.length > 0 && (
-                        <div className="border-t border-pink-200 pt-4 mt-4">
-                            <label className="block text-sm font-medium text-pink-900 mb-2">
-                                ข้อความอวยพร (ใช้ {"{{name}}"} สำหรับชื่อลูกค้า)
-                            </label>
-                            <textarea 
-                                value={sendMessage}
-                                onChange={(e) => setSendMessage(e.target.value)}
-                                className="w-full p-3 border border-pink-200 rounded-lg mb-3 focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
-                                rows={3}
-                            />
-                            <Button 
-                                className="w-full bg-pink-500 hover:bg-pink-600 text-white"
-                                onClick={sendToSelected}
-                                disabled={sending}
-                            >
-                                <Send className="h-4 w-4 mr-2" />
-                                {sending ? 'กำลังส่ง...' : `ส่งให้ ${selectedCustomers.length} คนที่เลือก`}
-                            </Button>
-                        </div>
-                    )}
                 </Card>
             )}
 
-            {/* Campaigns List */}
+            {/* Campaigns List - Redesigned */}
             {campaigns.length > 0 ? (
-                <div className="grid gap-4">
-                    {campaigns.map((campaign) => {
-                        const type = TYPE_CONFIG[campaign.campaign_type] || TYPE_CONFIG.custom;
-                        const status = STATUS_CONFIG[campaign.status] || STATUS_CONFIG.draft;
-                        const successRate = campaign.total_sent > 0 
-                            ? Math.round((campaign.total_opened / campaign.total_sent) * 100) || 0
-                            : 0;
-                        return (
-                            <Card key={campaign.id} className="overflow-hidden">
-                                {/* Header with colored bar */}
-                                <div className={`h-1 ${type.color.split(' ')[0]}`} />
-                                
-                                <div className="p-6">
-                                    {/* Top Row: Icon, Name, Status, Actions */}
-                                    <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4 mb-4">
-                                        <div className="flex items-start gap-4">
-                                            <div className={`p-3 rounded-xl ${type.color}`}>
-                                                {type.icon}
-                                            </div>
-                                            <div>
-                                                <div className="flex items-center gap-2 mb-1">
-                                                    <h3 className="font-semibold text-lg">{campaign.name}</h3>
-                                                    <Badge className={status.color}>{status.label}</Badge>
-                                                    <Badge variant="outline" className="text-xs">{type.label}</Badge>
+                <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                        <h2 className="font-bold text-xl flex items-center gap-2">
+                            <Megaphone className="h-5 w-5 text-primary" />
+                            Campaign ทั้งหมด
+                        </h2>
+                        <Badge variant="secondary" className="text-sm">
+                            {campaigns.length} รายการ
+                        </Badge>
+                    </div>
+                    
+                    <div className="grid gap-4 md:grid-cols-2">
+                        {campaigns.map((campaign) => {
+                            const type = TYPE_CONFIG[campaign.campaign_type] || TYPE_CONFIG.custom;
+                            const status = STATUS_CONFIG[campaign.status] || STATUS_CONFIG.draft;
+                            const openRate = campaign.total_sent > 0 
+                                ? Math.round((campaign.total_opened / campaign.total_sent) * 100) 
+                                : 0;
+                            
+                            return (
+                                <Card key={campaign.id} className="overflow-hidden shadow-premium hover-lift group">
+                                    {/* Status Bar */}
+                                    <div className={`h-1.5 ${
+                                        campaign.status === 'active' ? 'bg-gradient-to-r from-green-400 to-emerald-500' :
+                                        campaign.status === 'paused' ? 'bg-gradient-to-r from-yellow-400 to-amber-500' :
+                                        'bg-gradient-to-r from-gray-300 to-gray-400'
+                                    }`} />
+                                    
+                                    <div className="p-5">
+                                        {/* Header */}
+                                        <div className="flex items-start justify-between mb-4">
+                                            <div className="flex items-start gap-3">
+                                                <div className={`p-2.5 rounded-xl ${type.color} shrink-0`}>
+                                                    {type.icon}
                                                 </div>
-                                                <p className="text-sm text-muted-foreground">
-                                                    {campaign.description || 'ไม่มีคำอธิบาย'}
-                                                </p>
-                                                {campaign.coupons && (
-                                                    <Badge variant="secondary" className="mt-2">
-                                                        🎫 คูปอง: {campaign.coupons.code} ({campaign.coupons.discount_value}
-                                                        {campaign.coupons.discount_type === 'percentage' ? '%' : '฿'})
-                                                    </Badge>
-                                                )}
+                                                <div className="min-w-0">
+                                                    <h3 className="font-semibold text-foreground truncate">
+                                                        {campaign.name}
+                                                    </h3>
+                                                    <p className="text-sm text-muted-foreground mt-0.5 line-clamp-1">
+                                                        {campaign.description || 'ไม่มีคำอธิบาย'}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <Badge className={`${status.color} shrink-0`}>
+                                                {status.label}
+                                            </Badge>
+                                        </div>
+
+                                        {/* Stats Grid - Mobile Friendly */}
+                                        <div className="grid grid-cols-4 gap-2 p-3 bg-secondary/30 rounded-xl mb-4">
+                                            <div className="text-center">
+                                                <p className="font-bold text-lg text-foreground">{campaign.total_sent}</p>
+                                                <p className="text-[10px] text-muted-foreground uppercase tracking-wide">ส่ง</p>
+                                            </div>
+                                            <div className="text-center border-l border-border">
+                                                <p className="font-bold text-lg text-blue-600">{campaign.total_opened}</p>
+                                                <p className="text-[10px] text-muted-foreground uppercase tracking-wide">เปิด</p>
+                                            </div>
+                                            <div className="text-center border-l border-border">
+                                                <p className="font-bold text-lg text-green-600">{campaign.total_clicked}</p>
+                                                <p className="text-[10px] text-muted-foreground uppercase tracking-wide">คลิก</p>
+                                            </div>
+                                            <div className="text-center border-l border-border">
+                                                <p className="font-bold text-lg text-primary">{openRate}%</p>
+                                                <p className="text-[10px] text-muted-foreground uppercase tracking-wide">อัตรา</p>
                                             </div>
                                         </div>
-                                        
-                                        <div className="flex items-center gap-2">
+
+                                        {/* Actions - Full Width on Mobile */}
+                                        <div className="flex gap-2">
                                             <Button
-                                                variant="outline"
+                                                variant={campaign.status === "active" ? "secondary" : "default"}
                                                 size="sm"
                                                 onClick={() => toggleStatus(campaign)}
+                                                className="flex-1 rounded-lg"
                                             >
                                                 {campaign.status === "active" ? (
-                                                    <>
-                                                        <Pause className="h-4 w-4 mr-1" />
-                                                        หยุด
-                                                    </>
+                                                    <><Pause className="h-4 w-4 mr-1.5" />หยุด</>
                                                 ) : (
-                                                    <>
-                                                        <Play className="h-4 w-4 mr-1" />
-                                                        เปิดใช้
-                                                    </>
+                                                    <><Play className="h-4 w-4 mr-1.5" />เปิดใช้</>
                                                 )}
                                             </Button>
                                             <Button
                                                 size="sm"
                                                 onClick={() => runCampaign(campaign.id)}
                                                 disabled={running === campaign.id}
-                                                className="bg-orange-500 hover:bg-orange-600"
+                                                className="flex-1 rounded-lg bg-primary"
                                             >
                                                 {running === campaign.id ? (
-                                                    "กำลังส่ง..."
+                                                    <span className="flex items-center gap-1.5">
+                                                        <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                        ส่ง...
+                                                    </span>
                                                 ) : (
-                                                    <>
-                                                        <Send className="h-4 w-4 mr-1" />
-                                                        รันทันที
-                                                    </>
+                                                    <><Send className="h-4 w-4 mr-1.5" />ส่งทันที</>
                                                 )}
                                             </Button>
-                                            <Button variant="outline" size="sm" asChild>
+                                            <Button 
+                                                variant="outline" 
+                                                size="sm" 
+                                                asChild 
+                                                className="rounded-lg px-3"
+                                            >
                                                 <Link href={`/admin/campaigns/${campaign.id}/edit`}>
-                                                    <Edit className="h-4 w-4 mr-1" />
-                                                    แก้ไข
+                                                    <Edit className="h-4 w-4" />
                                                 </Link>
                                             </Button>
                                         </div>
-                                    </div>
 
-                                    {/* Stats Row */}
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-muted/30 rounded-lg mb-4">
-                                        <div className="text-center">
-                                            <p className="text-2xl font-bold text-foreground">{campaign.total_sent}</p>
-                                            <p className="text-xs text-muted-foreground">ส่งแล้ว</p>
-                                        </div>
-                                        <div className="text-center">
-                                            <p className="text-2xl font-bold text-blue-600">{campaign.total_opened}</p>
-                                            <p className="text-xs text-muted-foreground">เปิดอ่าน</p>
-                                        </div>
-                                        <div className="text-center">
-                                            <p className="text-2xl font-bold text-green-600">{campaign.total_clicked}</p>
-                                            <p className="text-xs text-muted-foreground">คลิก</p>
-                                        </div>
-                                        <div className="text-center">
-                                            <p className="text-2xl font-bold text-purple-600">{successRate}%</p>
-                                            <p className="text-xs text-muted-foreground">อัตราเปิดอ่าน</p>
-                                        </div>
-                                    </div>
-
-                                    {/* Message Preview */}
-                                    <div className="mb-4">
-                                        <p className="text-xs font-medium text-muted-foreground mb-1">📝 ข้อความ:</p>
-                                        <div className="p-3 bg-gray-50 rounded-lg border text-sm whitespace-pre-wrap">
-                                            {campaign.message_template.slice(0, 150)}
-                                            {campaign.message_template.length > 150 && '...'}
-                                        </div>
-                                    </div>
-
-                                    {/* Bottom Row: Meta Info */}
-                                    <div className="flex flex-wrap gap-4 text-xs text-muted-foreground border-t pt-4">
-                                        <span className="flex items-center gap-1">
-                                            <Calendar className="h-3 w-3" />
-                                            ตั้งเวลา: {campaign.schedule_type === 'manual' ? 'ส่งเอง' : campaign.schedule_type}
-                                        </span>
-                                        <span className="flex items-center gap-1">
-                                            <Clock className="h-3 w-3" />
-                                            สร้างเมื่อ: {formatDate(campaign.created_at)}
-                                        </span>
+                                        {/* Last Run Info */}
                                         {campaign.last_run_at && (
-                                            <span className="flex items-center gap-1">
-                                                <Send className="h-3 w-3" />
+                                            <p className="text-xs text-muted-foreground mt-3 flex items-center gap-1">
+                                                <Clock className="h-3 w-3" />
                                                 รันล่าสุด: {formatDate(campaign.last_run_at)}
-                                            </span>
+                                            </p>
                                         )}
                                     </div>
-                                </div>
-                            </Card>
-                        );
-                    })}
+                                </Card>
+                            );
+                        })}
+                    </div>
                 </div>
             ) : (
-                <Card className="p-12 text-center">
-                    <Megaphone className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                    <h3 className="text-lg font-medium mb-2">No campaigns yet</h3>
-                    <p className="text-muted-foreground mb-4">
-                        Create your first automated marketing campaign
+                <Card className="p-10 text-center shadow-premium">
+                    <div className="w-16 h-16 mx-auto mb-4 bg-secondary rounded-2xl flex items-center justify-center">
+                        <Megaphone className="h-8 w-8 text-muted-foreground" />
+                    </div>
+                    <h3 className="text-lg font-semibold mb-2">ยังไม่มี Campaign</h3>
+                    <p className="text-muted-foreground mb-5 max-w-sm mx-auto">
+                        สร้าง Campaign เพื่อส่งข้อความโปรโมชั่นหรืออวยพรวันเกิดถึงลูกค้า
                     </p>
-                    <Button asChild>
+                    <Button asChild size="lg" className="rounded-full px-6">
                         <Link href="/admin/campaigns/new">
                             <Plus className="h-4 w-4 mr-2" />
-                            Create Campaign
+                            สร้าง Campaign แรก
                         </Link>
                     </Button>
                 </Card>

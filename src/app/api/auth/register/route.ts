@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
+import { sendEmail } from "@/lib/email";
 
 // POST - Register new customer with email/password
 export async function POST(request: NextRequest) {
@@ -94,6 +95,13 @@ export async function POST(request: NextRequest) {
             maxAge: 60 * 60 * 24 * 7, // 7 days
             path: "/",
         });
+
+        // Send welcome email (async, don't wait)
+        sendEmail({
+            to: customer.email,
+            type: "welcome",
+            data: { name: customer.name },
+        }).catch(console.error);
 
         return NextResponse.json({
             success: true,

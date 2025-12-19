@@ -1,5 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
+import { sendEmail } from "@/lib/email";
+
+// Status labels in Thai
+const STATUS_LABELS: Record<string, string> = {
+    pending: "รอดำเนินการ",
+    processing: "กำลังเตรียมสินค้า",
+    shipped: "จัดส่งแล้ว",
+    delivered: "ส่งถึงแล้ว",
+    cancelled: "ยกเลิก",
+    paid: "ชำระเงินแล้ว",
+};
 
 // PATCH - Update order status and notify customer
 export async function PATCH(request: NextRequest) {
@@ -31,7 +42,7 @@ export async function PATCH(request: NextRequest) {
             .eq("id", orderId)
             .select(`
                 id, order_number, total_amount, fulfillment_status, tracking_number, shipping_carrier,
-                customer:customers(id, name, social_identities(social_user_id, platform))
+                customer:customers(id, name, email, social_identities(social_user_id, platform))
             `)
             .single();
 
@@ -39,13 +50,21 @@ export async function PATCH(request: NextRequest) {
             return NextResponse.json({ error: error.message }, { status: 500 });
         }
 
-        // Notify customer via LINE if requested
+        // Notify customer if requested
         if (notifyCustomer && order?.customer) {
             const customerData = Array.isArray(order.customer) ? order.customer[0] : order.customer;
+
+            // Find LINE user ID
             const lineUserId = customerData?.social_identities?.find(
                 (s: { platform: string }) => s.platform === "line"
             )?.social_user_id;
 
+            // Determine status for notification
+            const statusForDisplay = STATUS_LABELS[fulfillmentStatus] ||
+                STATUS_LABELS[paymentStatus] ||
+                fulfillmentStatus || paymentStatus;
+
+            // Send LINE notification if available
             if (lineUserId) {
                 const lineChannelToken = process.env.LINE_CHANNEL_ACCESS_TOKEN;
                 if (lineChannelToken) {
@@ -78,6 +97,20 @@ export async function PATCH(request: NextRequest) {
                         });
                     }
                 }
+            }
+            // Send EMAIL notification if customer has email but no LINE
+            else if (customerData?.email) {
+                sendEmail({
+                    to: customerData.email,
+                    type: "order_status_update",
+                    data: {
+                        customerName: customerData.name || "ลูกค้า",
+                        orderNumber: order.order_number,
+                        orderId: order.id,
+                        status: statusForDisplay,
+                        trackingNumber: trackingNumber,
+                    },
+                }).catch(console.error);
             }
         }
 
