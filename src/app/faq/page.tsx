@@ -125,12 +125,17 @@ export default function FAQPage() {
                     ติดต่อทีมงานของเราได้ตลอด 24 ชั่วโมง
                 </p>
                 <a
-                    href="https://line.me/ti/p/@thevisionary"
+                    href="https://lin.ee/Y0lv8Nr"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#00B900] text-white font-medium hover:bg-[#00A000] transition-colors"
+                    className="inline-block"
                 >
-                    💬 แชทกับเราทาง LINE
+                    <img 
+                        src="https://scdn.line-apps.com/n/line_add_friends/btn/th.png" 
+                        alt="เพิ่มเพื่อน" 
+                        height="36" 
+                        className="h-9 hover:opacity-90 transition-opacity"
+                    />
                 </a>
             </div>
         </div>

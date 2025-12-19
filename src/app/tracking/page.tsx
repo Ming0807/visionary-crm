@@ -112,7 +112,7 @@ export default function TrackingPage() {
                         ทีมงานพร้อมให้บริการคุณทุกวัน 10:00 - 21:00 น.
                     </p>
                     <Button asChild size="sm">
-                        <a href="https://line.me/ti/p/@thevisionary" target="_blank" rel="noopener noreferrer">
+                        <a href="https://lin.ee/Y0lv8Nr" target="_blank" rel="noopener noreferrer">
                             💬 แชทกับเรา
                         </a>
                     </Button>

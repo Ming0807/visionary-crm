@@ -31,7 +31,7 @@ const footerLinks = {
 const socialLinks = [
   { icon: Facebook, href: "https://facebook.com/thevisionary", label: "Facebook" },
   { icon: Instagram, href: "https://instagram.com/thevisionary", label: "Instagram" },
-  { icon: MessageCircle, href: "https://line.me/ti/p/@thevisionary", label: "LINE" },
+  { icon: MessageCircle, href: "https://lin.ee/Y0lv8Nr", label: "LINE" },
 ];
 
 const paymentMethods = ["VISA", "Mastercard", "PromptPay", "SCB", "TrueMoney"];

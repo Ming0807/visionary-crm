@@ -119,7 +119,7 @@ export default function LensGuidePage() {
                 </p>
                 <div className="flex gap-4 justify-center">
                     <Button asChild size="lg">
-                        <a href="https://line.me/ti/p/@thevisionary" target="_blank" rel="noopener noreferrer">
+                        <a href="https://lin.ee/Y0lv8Nr" target="_blank" rel="noopener noreferrer">
                             💬 ปรึกษาฟรี
                         </a>
                     </Button>

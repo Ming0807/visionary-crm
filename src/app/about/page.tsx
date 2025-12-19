@@ -176,7 +176,7 @@ export default async function AboutPage() {
                     <h2 className="text-2xl font-bold text-foreground mb-2">ติดต่อเรา</h2>
                     <p className="text-muted-foreground">พร้อมให้บริการทุกวัน</p>
                 </div>
-                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                     <div className="flex items-start gap-3">
                         <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
                             <MapPin className="h-5 w-5 text-primary" />
@@ -213,6 +213,26 @@ export default async function AboutPage() {
                             <p className="text-sm text-muted-foreground">@thevisionary</p>
                         </div>
                     </div>
+                </div>
+                
+                {/* CTA Buttons */}
+                <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-6 border-t border-border">
+                    <a
+                        href="https://lin.ee/Y0lv8Nr"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-block"
+                    >
+                        <img 
+                            src="https://scdn.line-apps.com/n/line_add_friends/btn/th.png" 
+                            alt="เพิ่มเพื่อน" 
+                            height="36" 
+                            className="h-9 hover:opacity-90 transition-opacity"
+                        />
+                    </a>
+                    <Button asChild variant="outline">
+                        <Link href="/faq">❓ ดู FAQ</Link>
+                    </Button>
                 </div>
             </div>
         </div>

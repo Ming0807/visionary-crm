@@ -110,3 +110,19 @@ export interface CartItem {
     colorName: string | null;
     colorCode: string | null;
 }
+
+// Contact form message type
+export interface ContactMessage {
+    id: string;
+    name: string;
+    phone: string;
+    email: string | null;
+    subject: string;
+    message: string;
+    status: 'new' | 'read' | 'replied' | 'archived';
+    admin_notes: string | null;
+    replied_at: string | null;
+    replied_by: string | null;
+    created_at: string;
+    updated_at: string;
+}

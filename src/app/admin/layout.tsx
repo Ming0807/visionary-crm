@@ -19,7 +19,8 @@ import {
   UserCircle,
   Menu,
   X,
-  UserPlus
+  UserPlus,
+  Mail
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { RealtimeProvider } from "@/components/RealtimeProvider";
@@ -27,6 +28,7 @@ import { RealtimeProvider } from "@/components/RealtimeProvider";
 const sidebarLinks = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/inbox", label: "Inbox", icon: MessageSquare },
+  { href: "/admin/messages", label: "Messages", icon: Mail },
   { href: "/admin/orders", label: "Orders", icon: ShoppingCart },
   { href: "/admin/customers", label: "Customers", icon: Users },
   { href: "/admin/products", label: "Products", icon: Package },

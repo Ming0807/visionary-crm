@@ -19,7 +19,8 @@ type EmailType =
     | "claim_status_update"
     | "welcome"
     | "birthday"
-    | "promotion";
+    | "promotion"
+    | "contact_reply";
 
 interface SendEmailOptions {
     to: string;
@@ -211,6 +212,59 @@ const templates: Record<EmailType, (data: any) => { subject: string; html: strin
                 <div style="text-align: center; padding: 20px; color: #999; font-size: 12px;">
                     <p style="margin: 0;">© The Visionary - Premium Eyewear</p>
                     <p style="margin: 5px 0 0 0;">คุณได้รับอีเมลนี้เพราะเป็นสมาชิกของเรา</p>
+                </div>
+            </div>
+        `,
+    }),
+
+    contact_reply: (data) => ({
+        subject: `💬 ${data.subject || 'ตอบกลับจาก The Visionary'}`,
+        html: `
+            <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #faf9f7;">
+                <div style="text-align: center; padding: 20px 0;">
+                    <h1 style="color: #c2410c; margin: 0; font-size: 28px;">The Visionary</h1>
+                    <p style="color: #92400e; margin: 5px 0 0 0; font-size: 14px;">Premium Eyewear</p>
+                </div>
+                <div style="background: linear-gradient(135deg, #c2410c 0%, #ea580c 100%); color: white; padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
+                    <h2 style="margin: 0; font-size: 22px;">💬 ตอบกลับข้อความของคุณ</h2>
+                </div>
+                <div style="background: white; padding: 30px; border-radius: 0 0 16px 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
+                    <p style="color: #333; font-size: 16px; margin: 0 0 20px 0;">สวัสดีคุณ ${data.customerName || 'ลูกค้า'},</p>
+                    
+                    ${data.originalMessage ? `
+                        <div style="background: #f5f5f4; border-left: 4px solid #d6d3d1; padding: 15px 20px; margin: 0 0 25px 0; border-radius: 0 8px 8px 0;">
+                            <p style="margin: 0 0 8px 0; font-size: 12px; color: #78716c; text-transform: uppercase; letter-spacing: 0.5px;">ข้อความของคุณ:</p>
+                            <p style="margin: 0; color: #57534e; font-size: 14px; line-height: 1.5; font-style: italic;">"${data.originalMessage}"</p>
+                        </div>
+                    ` : ''}
+                    
+                    <div style="color: #333; font-size: 15px; line-height: 1.8; white-space: pre-line;">${data.message || ''}</div>
+                    
+                    ${data.linkUrl ? `
+                        <div style="text-align: center; margin: 30px 0;">
+                            <a href="${data.linkUrl}" 
+                               style="display: inline-block; background: linear-gradient(135deg, #c2410c 0%, #ea580c 100%); color: white; padding: 14px 35px; text-decoration: none; border-radius: 50px; font-weight: bold; font-size: 15px; box-shadow: 0 4px 15px rgba(194, 65, 12, 0.3);">
+                                ${data.linkText || 'ดูรายละเอียด'} →
+                            </a>
+                        </div>
+                    ` : ''}
+                    
+                    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e7e5e4;">
+                        <p style="color: #78716c; font-size: 14px; margin: 0;">
+                            หากมีคำถามเพิ่มเติม สามารถตอบกลับอีเมลนี้ได้เลยครับ/ค่ะ
+                        </p>
+                        <p style="color: #333; font-size: 14px; margin: 15px 0 0 0;">
+                            ด้วยความเคารพ,<br/>
+                            <strong style="color: #c2410c;">ทีมงาน The Visionary</strong>
+                        </p>
+                    </div>
+                </div>
+                <div style="text-align: center; padding: 25px; color: #a8a29e; font-size: 12px;">
+                    <p style="margin: 0;">© The Visionary - Premium Eyewear</p>
+                    <p style="margin: 8px 0 0 0;">
+                        <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}" style="color: #c2410c; text-decoration: none;">เว็บไซต์</a> • 
+                        <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/contact" style="color: #c2410c; text-decoration: none;">ติดต่อเรา</a>
+                    </p>
                 </div>
             </div>
         `,
